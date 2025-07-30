@@ -1,0 +1,84 @@
+# API Examples for Dashboard Backend
+# Use with REST Client extension in VS Code or similar tools
+
+### Health Check
+GET http://localhost:3000/health
+
+### Get All Users
+GET http://localhost:3000/api/v1/users
+
+### Get Users with Pagination
+GET http://localhost:3000/api/v1/users?page=1&limit=5
+
+### Get Users with Search
+GET http://localhost:3000/api/v1/users?search=john
+
+### Get User Statistics
+GET http://localhost:3000/api/v1/users/stats
+
+### Create User
+POST http://localhost:3000/api/v1/users
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john.doe@example.com",
+  "role": "USER"
+}
+
+### Create Admin User
+POST http://localhost:3000/api/v1/users
+Content-Type: application/json
+
+{
+  "name": "Admin User",
+  "email": "admin@example.com",
+  "role": "ADMIN"
+}
+
+### Get User by ID (replace with actual UUID)
+GET http://localhost:3000/api/v1/users/123e4567-e89b-12d3-a456-426614174000
+
+### Update User (replace with actual UUID)
+PUT http://localhost:3000/api/v1/users/123e4567-e89b-12d3-a456-426614174000
+Content-Type: application/json
+
+{
+  "name": "John Smith",
+  "role": "ADMIN"
+}
+
+### Delete User (replace with actual UUID)
+DELETE http://localhost:3000/api/v1/users/123e4567-e89b-12d3-a456-426614174000
+
+### Auth - Register (placeholder)
+POST http://localhost:3000/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "New User",
+  "email": "newuser@example.com",
+  "password": "password123"
+}
+
+### Auth - Login (placeholder)
+POST http://localhost:3000/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "password": "password123"
+}
+
+### Auth - Get Current User (placeholder)
+GET http://localhost:3000/api/v1/auth/me
+x-user-id: 123e4567-e89b-12d3-a456-426614174000
+
+### Test Invalid Request (should return validation error)
+POST http://localhost:3000/api/v1/users
+Content-Type: application/json
+
+{
+  "name": "A",
+  "email": "invalid-email"
+}

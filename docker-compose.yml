@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: dashboard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dashboard_db
+      POSTGRES_USER: dashboard_user
+      POSTGRES_PASSWORD: dashboard_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - dashboard-network
+
+  # Redis (for future caching/sessions)
+  redis:
+    image: redis:7-alpine
+    container_name: dashboard-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - dashboard-network
+
+  # Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dashboard-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://dashboard_user:dashboard_password@postgres:5432/dashboard_db?schema=public
+      PORT: 3000
+      JWT_SECRET: your-super-secret-jwt-key-that-should-be-at-least-32-characters-long
+      JWT_EXPIRES_IN: 7d
+      LOG_LEVEL: info
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - dashboard-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  dashboard-network:
+    driver: bridge

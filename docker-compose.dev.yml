@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for development
+  postgres:
+    image: postgres:15-alpine
+    container_name: dashboard-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dashboard_db
+      POSTGRES_USER: dashboard_user
+      POSTGRES_PASSWORD: dashboard_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    networks:
+      - dashboard-dev-network
+
+  # Redis for development
+  redis:
+    image: redis:7-alpine
+    container_name: dashboard-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - dashboard-dev-network
+
+volumes:
+  postgres_dev_data:
+  redis_dev_data:
+
+networks:
+  dashboard-dev-network:
+    driver: bridge
