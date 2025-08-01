@@ -5,7 +5,7 @@ import { logger } from './utils/logger';
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 const server = app.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT}`);
