@@ -8,7 +8,7 @@ export const DepartmentEnum = z.enum(['HR', 'ENGINEERING', 'SALES', 'UI', 'DEVEL
 export const EmploymentTypeEnum = z.enum(['FULL_TIME', 'PART_TIME', 'INTERN', 'CONTRACT']);
 export const RoleEnum = z.enum(['EMPLOYEE', 'MANAGER', 'ADMIN']);
 
-// Date validation helper
+// Date validation helper - accepts dd/mm/yyyy format
 const dateStringSchema = z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Date must be in dd/mm/yyyy format');
 
 // Education history schema
@@ -40,7 +40,7 @@ const workExperienceSchema = z.object({
   location: z.string().optional(),
 });
 
-// Schema for creating Supabase user account only
+// Schema for creating Supabase user account only (Step 1)
 export const createSupabaseUserSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
@@ -48,7 +48,67 @@ export const createSupabaseUserSchema = z.object({
   role: RoleEnum.default('EMPLOYEE'),
 });
 
-// Schema for creating complete employee profile
+// Schema for complete employee profile creation (Two-step process)
+export const createFullEmployeeSchema = z.object({
+  // Personal Information (Required fields marked with *)
+  firstName: z.string().min(1, 'First name is required'),
+  middleName: z.string().optional(),
+  lastName: z.string().min(1, 'Last name is required'),
+  dateOfBirth: dateStringSchema,
+  gender: GenderEnum,
+  maritalStatus: MaritalStatusEnum,
+  contactNumber: z.string().min(10, 'Contact number must be at least 10 digits'),
+  emailAddress: z.string().email('Invalid email format'),
+  emergencyContactName: z.string().optional(),
+  emergencyContactRelationship: EmergencyContactRelationshipEnum.optional(),
+  emergencyContactPhone: z.string().optional(),
+  currentAddress: z.string().optional(),
+  permanentAddress: z.string().optional(),
+  
+  // Employment Information (Required fields marked with *)
+  jobTitle: z.string().min(1, 'Job title is required'),
+  department: DepartmentEnum,
+  departmentOther: z.string().optional(),
+  employmentType: EmploymentTypeEnum,
+  hireDate: dateStringSchema,
+  workLocation: z.string().min(1, 'Work location is required'),
+  reportingManager: z.string().optional(),
+  salaryGrade: z.string().optional(),
+  
+  // User account information
+  role: RoleEnum.default('EMPLOYEE'),
+  password: z.string().min(8, 'Password must be at least 8 characters').optional(),
+  
+  // Additional Information (All optional)
+  educationHistory: z.array(educationSchema).optional(),
+  certifications: z.array(certificationSchema).optional(),
+  skills: z.array(z.string()).optional(),
+  previousWorkExperience: z.array(workExperienceSchema).optional(),
+  bankAccountNumber: z.string().optional(),
+  bankName: z.string().optional(),
+  bankBranch: z.string().optional(),
+  routingNumber: z.string().optional(),
+}).refine((data) => {
+  // If department is OTHER, departmentOther must be provided
+  if (data.department === 'OTHER' && !data.departmentOther) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Department other field is required when department is OTHER',
+  path: ['departmentOther'],
+}).refine((data) => {
+  // If emergency contact name is provided, relationship should also be provided
+  if (data.emergencyContactName && !data.emergencyContactRelationship) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Emergency contact relationship is required when emergency contact name is provided',
+  path: ['emergencyContactRelationship'],
+});
+
+// Schema for creating employee profile with existing Supabase ID
 export const createEmployeeSchema = z.object({
   supabaseId: z.string().min(1, 'Supabase user ID is required'),
   
@@ -107,7 +167,6 @@ export const createEmployeeSchema = z.object({
 });
 
 // Schema for updating employee profile
-// Schema for updating employee profile
 export const updateEmployeeSchema = z.object({
   firstName: z.string().min(1, "First name is required").optional(),
   middleName: z.string().optional(),
@@ -157,6 +216,7 @@ export const getEmployeesQuerySchema = z.object({
 
 // Type exports
 export type CreateSupabaseUserInput = z.infer<typeof createSupabaseUserSchema>;
+export type CreateFullEmployeeInput = z.infer<typeof createFullEmployeeSchema>;
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;
 export type GetEmployeeByIdInput = z.infer<typeof getEmployeeByIdSchema>;

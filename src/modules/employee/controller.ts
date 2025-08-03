@@ -4,6 +4,7 @@ import { logger } from '../../utils/logger';
 import { AuthenticatedRequest } from '../../middlewares/supabaseAuth';
 import {
   CreateSupabaseUserInput,
+  CreateFullEmployeeInput,
   CreateEmployeeInput,
   UpdateEmployeeInput,
   GetEmployeeByIdInput,
@@ -12,7 +13,59 @@ import {
 
 export class EmployeeController {
   /**
-   * Create Supabase user account only
+   * Create complete employee profile with two-step process
+   * POST /api/v1/employees
+   */
+  static async createFullEmployee(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const data: CreateFullEmployeeInput = req.body;
+      const createdBy = req.user?.id || 'system';
+
+      logger.info(`Admin ${req.user?.email} creating full employee profile for: ${data.emailAddress}`);
+
+      const result = await EmployeeService.createFullEmployee(data, createdBy);
+
+      res.status(201).json({
+        success: true,
+        message: result.message,
+        data: {
+          employee: result.employee,
+          supabaseUser: result.supabaseUser,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in createFullEmployee controller:', error);
+      
+      // Handle specific errors
+      if (error.message.includes('User already registered') || error.message.includes('already exists')) {
+        res.status(409).json({
+          success: false,
+          message: 'User with this email already exists',
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (error.message.includes('Unique constraint failed')) {
+        res.status(409).json({
+          success: false,
+          message: 'Employee with this email or Supabase ID already exists',
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error.message || 'Failed to create employee profile',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Create Supabase user account only (Legacy endpoint)
    * POST /api/v1/add-emp
    */
   static async createSupabaseUser(req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -30,7 +83,7 @@ export class EmployeeController {
         data: result,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error in createSupabaseUser controller:', error);
       
       // Handle specific Supabase errors
@@ -52,8 +105,8 @@ export class EmployeeController {
   }
 
   /**
-   * Create complete employee profile
-   * POST /api/v1/employees
+   * Create employee profile with existing Supabase ID (Legacy endpoint)
+   * POST /api/v1/employees/profile
    */
   static async createEmployee(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
@@ -70,7 +123,7 @@ export class EmployeeController {
         data: employee,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error in createEmployee controller:', error);
 
       // Handle specific errors
@@ -118,7 +171,7 @@ export class EmployeeController {
         data: employee,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error in getEmployeeById controller:', error);
 
       if (error.message.includes('not found')) {
@@ -157,7 +210,7 @@ export class EmployeeController {
         pagination: result.pagination,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error in getEmployees controller:', error);
 
       res.status(500).json({
@@ -187,7 +240,7 @@ export class EmployeeController {
         data: updatedEmployee,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error in updateEmployee controller:', error);
 
       if (error.message.includes('not found')) {
@@ -233,7 +286,7 @@ export class EmployeeController {
         message: result.message,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error in deleteEmployee controller:', error);
 
       if (error.message.includes('not found')) {
@@ -269,7 +322,7 @@ export class EmployeeController {
         data: stats,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Error in getEmployeeStats controller:', error);
 
       res.status(500).json({
