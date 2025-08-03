@@ -13,6 +13,7 @@ import { swaggerSpec } from './config/swagger';
 // Import module routes
 import userRoutes from './modules/user/route';
 import authRoutes from './modules/auth/route';
+import employeeRoutes from './modules/employee/route';
 
 const app = express();
 
@@ -157,6 +158,7 @@ app.get('/', (req, res) => {
 // API routes
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1', employeeRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

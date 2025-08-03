@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { AuthController } from './controller';
 import { validateRequest } from '../../middlewares/validation';
-import { verifySupabaseToken } from '../../middlewares/supabaseAuth';
+import { verifyToken } from '../../middlewares/testAuth';
 import {
   loginSchema,
   registerSchema,
@@ -180,7 +180,7 @@ router.post('/logout', AuthController.logout);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/me', verifySupabaseToken, AuthController.getCurrentUser);
+router.get('/me', verifyToken, AuthController.getCurrentUser);
 
 /**
  * @swagger

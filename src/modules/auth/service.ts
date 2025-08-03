@@ -19,7 +19,7 @@ export class AuthService {
         options: {
           data: {
             name: data.name,
-            role: 'USER',
+            role: 'EMPLOYEE',
           },
         },
       });
@@ -40,7 +40,7 @@ export class AuthService {
             id: authData.user.id,
             email: data.email,
             name: data.name,
-            role: 'USER',
+            role: 'EMPLOYEE',
           },
         });
 
@@ -49,7 +49,7 @@ export class AuthService {
             id: authData.user.id,
             email: authData.user.email,
             name: data.name,
-            role: 'USER',
+            role: 'EMPLOYEE',
             emailConfirmed: authData.user.email_confirmed_at ? true : false,
           },
           session: authData.session,
@@ -109,7 +109,7 @@ export class AuthService {
             id: authData.user.id,
             email: authData.user.email || '',
             name: authData.user.user_metadata?.name || (authData.user.email || '').split('@')[0],
-            role: authData.user.user_metadata?.role || 'USER',
+            role: authData.user.user_metadata?.role || 'EMPLOYEE',
           },
         });
       }
@@ -119,7 +119,7 @@ export class AuthService {
           id: authData.user.id,
           email: authData.user.email,
           name: userData?.name || authData.user.user_metadata?.name,
-          role: userData?.role || authData.user.user_metadata?.role || 'USER',
+          role: userData?.role || authData.user.user_metadata?.role || 'EMPLOYEE',
           emailConfirmed: authData.user.email_confirmed_at ? true : false,
         },
         session: authData.session,
@@ -149,11 +149,13 @@ export class AuthService {
   static async logout(_accessToken: string): Promise<void> {
     try {
       // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
+      if (supabase) {
+        const { error } = await supabase.auth.signOut();
 
-      if (error) {
-        logger.error('Supabase logout error:', error);
-        // Don't throw error for logout failures
+        if (error) {
+          logger.error('Supabase logout error:', error);
+          // Don't throw error for logout failures
+        }
       }
     } catch (error) {
       logger.error('Logout service error:', error);
@@ -163,6 +165,10 @@ export class AuthService {
 
   static async refreshToken(refreshToken: string): Promise<{ user: any; session: any }> {
     try {
+      if (!supabase) {
+        throw new CustomError('Authentication service is not configured', 503);
+      }
+
       const { data, error } = await supabase.auth.refreshSession({
         refresh_token: refreshToken,
       });
@@ -181,7 +187,7 @@ export class AuthService {
           id: data.user.id,
           email: data.user.email,
           name: userData?.name || data.user.user_metadata?.name,
-          role: userData?.role || data.user.user_metadata?.role || 'USER',
+          role: userData?.role || data.user.user_metadata?.role || 'EMPLOYEE',
           emailConfirmed: data.user.email_confirmed_at ? true : false,
         },
         session: data.session,
@@ -197,6 +203,10 @@ export class AuthService {
 
   static async forgotPassword(email: string): Promise<void> {
     try {
+      if (!supabase) {
+        throw new CustomError('Authentication service is not configured', 503);
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password`,
       });
@@ -213,6 +223,10 @@ export class AuthService {
 
   static async resetPassword(accessToken: string, newPassword: string): Promise<void> {
     try {
+      if (!supabase) {
+        throw new CustomError('Authentication service is not configured', 503);
+      }
+
       // Set the session with the access token
       const { error: sessionError } = await supabase.auth.setSession({
         access_token: accessToken,
@@ -243,6 +257,10 @@ export class AuthService {
 
   static async verifyEmail(token: string, type: string): Promise<void> {
     try {
+      if (!supabase) {
+        throw new CustomError('Authentication service is not configured', 503);
+      }
+
       const { error } = await supabase.auth.verifyOtp({
         token_hash: token,
         type: type as any,

@@ -7,7 +7,8 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     email: string;
     role?: string;
-    [key: string]: any;
+    name?: string;
+    [key: string]: unknown;
   };
 }
 
@@ -62,7 +63,7 @@ export const verifySupabaseToken = async (
     req.user = {
       id: user.id,
       email: user.email || '',
-      role: user.user_metadata?.role || 'USER',
+      role: user.user_metadata?.role || 'EMPLOYEE',
       ...user.user_metadata,
     };
 
@@ -92,7 +93,7 @@ export const requireRole = (requiredRole: string) => {
       return;
     }
 
-    const userRole = req.user.role || 'USER';
+    const userRole = req.user.role || 'EMPLOYEE';
 
     if (userRole !== requiredRole && userRole !== 'ADMIN') {
       res.status(403).json({
@@ -139,7 +140,7 @@ export const optionalAuth = async (
       req.user = {
         id: user.id,
         email: user.email || '',
-        role: user.user_metadata?.role || 'USER',
+        role: user.user_metadata?.role || 'EMPLOYEE',
         ...user.user_metadata,
       };
     }

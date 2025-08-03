@@ -1,6 +1,6 @@
 import { Response } from 'express';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
@@ -51,6 +51,10 @@ export class ResponseUtil {
 
   static forbidden(res: Response, message: string = 'Forbidden'): Response<ApiResponse> {
     return this.error(res, message, undefined, 403);
+  }
+
+  static badRequest(res: Response, message: string = 'Bad Request'): Response<ApiResponse> {
+    return this.error(res, message, undefined, 400);
   }
 
   static serverError(

@@ -18,7 +18,7 @@ const swaggerDefinition: SwaggerDefinition = {
   },
   servers: [
     {
-      url: 'http://localhost:3004',
+      url: 'http://localhost:3000',
       description: 'Development server',
     },
     {
@@ -60,9 +60,9 @@ const swaggerDefinition: SwaggerDefinition = {
           },
           role: {
             type: 'string',
-            enum: ['EMPLOYEE', 'MANAGER', 'ADMIN'],
+            enum: ['USER', 'ADMIN'],
             description: 'User role',
-            example: 'EMPLOYEE',
+            example: 'USER',
           },
           createdAt: {
             type: 'string',
@@ -96,10 +96,10 @@ const swaggerDefinition: SwaggerDefinition = {
           },
           role: {
             type: 'string',
-            enum: ['EMPLOYEE', 'MANAGER', 'ADMIN'],
+            enum: ['USER', 'ADMIN'],
             description: 'User role',
-            example: 'EMPLOYEE',
-            default: 'EMPLOYEE',
+            example: 'USER',
+            default: 'USER',
           },
         },
       },
@@ -120,9 +120,9 @@ const swaggerDefinition: SwaggerDefinition = {
           },
           role: {
             type: 'string',
-            enum: ['EMPLOYEE', 'MANAGER', 'ADMIN'],
+            enum: ['USER', 'ADMIN'],
             description: 'User role',
-            example: 'EMPLOYEE',
+            example: 'USER',
           },
         },
       },
@@ -391,8 +391,8 @@ const swaggerDefinition: SwaggerDefinition = {
         description: 'Filter users by role',
         schema: {
           type: 'string',
-          enum: ['EMPLOYEE', 'MANAGER', 'ADMIN'],
-          example: 'EMPLOYEE',
+          enum: ['USER', 'ADMIN'],
+          example: 'USER',
         },
       },
     },

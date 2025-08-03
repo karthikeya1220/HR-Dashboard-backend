@@ -15,7 +15,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
 
   // Override res.end to log response
   const originalEnd = res.end;
-  res.end = function (chunk?: any, encoding?: any): Response {
+  res.end = function (...args: any[]): Response {
     const duration = Date.now() - start;
 
     logger.info('Request completed', {
@@ -26,7 +26,7 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
       ip: req.ip,
     });
 
-    return originalEnd.call(this, chunk, encoding);
+    return (originalEnd as any).apply(this, args);
   };
 
   next();

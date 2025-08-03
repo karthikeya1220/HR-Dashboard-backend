@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { UserController } from './controller';
 import { validateRequest } from '../../middlewares/validation';
+import { verifyToken } from '../../middlewares/testAuth';
 import {
   createUserSchema,
   updateUserSchema,
@@ -17,6 +18,8 @@ const router = Router();
  *     summary: Get all users with pagination and filtering
  *     description: Retrieve a paginated list of users with optional search and role filtering
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/Page'
  *       - $ref: '#/components/parameters/Limit'
@@ -39,7 +42,7 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/', validateRequest({ query: getUsersQuerySchema }), UserController.getUsers);
+router.get('/', verifyToken, validateRequest({ query: getUsersQuerySchema }), UserController.getUsers);
 
 /**
  * @swagger
@@ -48,6 +51,8 @@ router.get('/', validateRequest({ query: getUsersQuerySchema }), UserController.
  *     summary: Get user statistics
  *     description: Retrieve statistics about users including total count and role distribution
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: User statistics retrieved successfully
@@ -63,7 +68,7 @@ router.get('/', validateRequest({ query: getUsersQuerySchema }), UserController.
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/stats', UserController.getUserStats);
+router.get('/stats', verifyToken, UserController.getUserStats);
 
 /**
  * @swagger
@@ -72,6 +77,8 @@ router.get('/stats', UserController.getUserStats);
  *     summary: Get user by ID
  *     description: Retrieve a specific user by their unique identifier
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/UserId'
  *     responses:
@@ -93,7 +100,7 @@ router.get('/stats', UserController.getUserStats);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/:id', validateRequest({ params: getUserByIdSchema }), UserController.getUserById);
+router.get('/:id', verifyToken, validateRequest({ params: getUserByIdSchema }), UserController.getUserById);
 
 /**
  * @swagger
@@ -102,6 +109,8 @@ router.get('/:id', validateRequest({ params: getUserByIdSchema }), UserControlle
  *     summary: Create a new user
  *     description: Create a new user with the provided information
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -151,7 +160,7 @@ router.get('/:id', validateRequest({ params: getUserByIdSchema }), UserControlle
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/', validateRequest({ body: createUserSchema }), UserController.createUser);
+router.post('/', verifyToken, validateRequest({ body: createUserSchema }), UserController.createUser);
 
 /**
  * @swagger
@@ -160,6 +169,8 @@ router.post('/', validateRequest({ body: createUserSchema }), UserController.cre
  *     summary: Update user
  *     description: Update an existing user's information
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/UserId'
  *     requestBody:
@@ -217,6 +228,7 @@ router.post('/', validateRequest({ body: createUserSchema }), UserController.cre
  */
 router.put(
   '/:id',
+  verifyToken,
   validateRequest({
     params: getUserByIdSchema,
     body: updateUserSchema,
@@ -231,6 +243,8 @@ router.put(
  *     summary: Delete user
  *     description: Delete a user by their unique identifier
  *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - $ref: '#/components/parameters/UserId'
  *     responses:
@@ -254,6 +268,6 @@ router.put(
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.delete('/:id', validateRequest({ params: getUserByIdSchema }), UserController.deleteUser);
+router.delete('/:id', verifyToken, validateRequest({ params: getUserByIdSchema }), UserController.deleteUser);
 
 export default router;

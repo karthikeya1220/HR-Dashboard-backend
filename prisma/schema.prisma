@@ -11,17 +11,111 @@ datasource db {
 }
 
 enum Role {
-  USER
+  EMPLOYEE
+  MANAGER
   ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+  SEPARATED
+}
+
+enum EmergencyContactRelationship {
+  SPOUSE
+  PARENT
+  SIBLING
+  FRIEND
+  OTHER
+}
+
+enum Department {
+  HR
+  ENGINEERING
+  SALES
+  UI
+  DEVELOPER
+  OTHER
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  INTERN
+  CONTRACT
 }
 
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String
-  role      Role     @default(USER)
+  role      Role     @default(EMPLOYEE)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("users")
+}
+
+model Employee {
+  id                          String                           @id @default(uuid())
+  supabaseId                  String                           @unique
+  
+  // Personal Information
+  firstName                   String
+  middleName                  String?
+  lastName                    String
+  dateOfBirth                 DateTime
+  gender                      Gender
+  maritalStatus               MaritalStatus
+  contactNumber               String
+  email                       String                           @unique
+  emergencyContactName        String?
+  emergencyContactRelationship EmergencyContactRelationship?
+  emergencyContactPhone       String?
+  currentAddress              String?
+  permanentAddress            String?
+  
+  // Employment Information
+  jobTitle                    String
+  department                  Department
+  departmentOther             String?                          // For "Other" department option
+  employmentType              EmploymentType
+  hireDate                    DateTime
+  workLocation                String
+  reportingManager            String?
+  salaryGrade                 String?
+  
+  // Additional Information
+  educationHistory            Json?                            // Array of education records
+  certifications              Json?                            // Array of certifications
+  skills                      String[]                         // Array of skills
+  previousWorkExperience      Json?                            // Array of work experience
+  bankAccountNumber           String?
+  bankName                    String?
+  bankBranch                  String?
+  routingNumber               String?                          // IFSC Code or Routing Number
+  
+  // Metadata
+  isActive                    Boolean                          @default(true)
+  createdBy                   String?                          // Admin who created this employee
+  createdAt                   DateTime                         @default(now())
+  updatedAt                   DateTime                         @updatedAt
+  
+  // Indexes for performance
+  @@index([supabaseId])
+  @@index([email])
+  @@index([department])
+  @@index([employmentType])
+  @@index([isActive])
+  @@map("employees")
 }
