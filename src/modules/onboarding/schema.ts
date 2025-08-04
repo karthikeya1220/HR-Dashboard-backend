@@ -274,3 +274,74 @@ export type GetWorkflowInstancesQueryInput = z.infer<typeof getWorkflowInstances
 
 export type ResourceType = z.infer<typeof resourceSchema>;
 export type ConditionalLogicType = z.infer<typeof conditionalLogicSchema>;
+// Onboarding Instance Management Schemas
+export const createOnboardingInstanceSchema = z.object({
+  employee_id: z.string().uuid('Invalid employee ID format'),
+  workflow_id: z.string().uuid('Invalid workflow ID format'),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
+  priority_level: PriorityLevelEnum.default('MEDIUM'),
+  onboarding_manager_id: z.string().uuid('Invalid manager ID format').optional(),
+  additional_notes: z.string().max(1000).optional(),
+});
+
+export const updateOnboardingInstanceSchema = z.object({
+  status: WorkflowInstanceStatusEnum.optional(),
+  priority_level: PriorityLevelEnum.optional(),
+  onboarding_manager_id: z.string().uuid('Invalid manager ID format').optional(),
+  additional_notes: z.string().max(1000).optional(),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
+});
+
+export const assignManagerSchema = z.object({
+  manager_id: z.string().uuid('Invalid manager ID format'),
+});
+
+export const updateTaskStatusSchema = z.object({
+  status: TaskInstanceStatusEnum,
+  comments: z.string().max(1000).optional(),
+  completion_notes: z.string().max(1000).optional(),
+  attachments: z.array(z.object({
+    name: z.string(),
+    url: z.string().url(),
+    type: z.string(),
+  })).optional(),
+});
+
+export const getOnboardingInstanceByIdSchema = z.object({
+  onboarding_instance_id: z.string().uuid('Invalid instance ID format'),
+});
+
+export const getEmployeeOnboardingSchema = z.object({
+  employee_id: z.string().uuid('Invalid employee ID format'),
+});
+
+export const getEmployeeTaskSchema = z.object({
+  employee_id: z.string().uuid('Invalid employee ID format'),
+  task_id: z.string().uuid('Invalid task ID format'),
+});
+
+export const getManagerTasksSchema = z.object({
+  manager_id: z.string().uuid('Invalid manager ID format'),
+});
+
+export const getOnboardingInstancesQuerySchema = z.object({
+  page: z.string().transform(Number).default('1'),
+  limit: z.string().transform(Number).default('10'),
+  employee_id: z.string().uuid().optional(),
+  workflow_id: z.string().uuid().optional(),
+  status: WorkflowInstanceStatusEnum.optional(),
+  priority_level: PriorityLevelEnum.optional(),
+  assigned_by: z.string().uuid().optional(),
+  manager_id: z.string().uuid().optional(),
+});
+
+// New type exports for onboarding instance management
+export type CreateOnboardingInstanceInput = z.infer<typeof createOnboardingInstanceSchema>;
+export type UpdateOnboardingInstanceInput = z.infer<typeof updateOnboardingInstanceSchema>;
+export type AssignManagerInput = z.infer<typeof assignManagerSchema>;
+export type UpdateTaskStatusInput = z.infer<typeof updateTaskStatusSchema>;
+export type GetOnboardingInstanceByIdInput = z.infer<typeof getOnboardingInstanceByIdSchema>;
+export type GetEmployeeOnboardingInput = z.infer<typeof getEmployeeOnboardingSchema>;
+export type GetEmployeeTaskInput = z.infer<typeof getEmployeeTaskSchema>;
+export type GetManagerTasksInput = z.infer<typeof getManagerTasksSchema>;
+export type GetOnboardingInstancesQueryInput = z.infer<typeof getOnboardingInstancesQuerySchema>;
