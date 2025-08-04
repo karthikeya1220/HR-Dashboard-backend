@@ -40,7 +40,7 @@ enum EmergencyContactRelationship {
 }
 
 enum Department {
-  HR
+  ADMIN
   ENGINEERING
   SALES
   UI
@@ -116,6 +116,292 @@ model Employee {
   @@index([email])
   @@index([department])
   @@index([employmentType])
+  // Relations
+  workflowInstances           WorkflowInstance[]
   @@index([isActive])
   @@map("employees")
+}
+// Onboarding Workflow Enums
+enum TaskType {
+  DOCUMENT_SUBMISSION
+  TRAINING
+  ORIENTATION
+  EQUIPMENT_ALLOCATION
+  SYSTEM_ACCESS
+  MEETING
+  REVIEW
+  OTHER
+}
+
+enum AssigneeType {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+
+}
+
+enum PriorityLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DurationUnit {
+  HOURS
+  DAYS
+  WEEKS
+}
+
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum TaskInstanceStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  SKIPPED
+  CANCELLED
+}
+
+enum WorkflowInstanceStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+}
+
+enum ConditionType {
+  EMPLOYEE_TYPE
+  DEPARTMENT
+  ROLE
+  LOCATION
+  HIRE_DATE
+  CUSTOM
+}
+
+enum ConditionOperator {
+  EQUALS
+  NOT_EQUALS
+  IN
+  NOT_IN
+  GREATER_THAN
+  LESS_THAN
+  CONTAINS
+}
+
+// Global Task Library
+model GlobalTask {
+  id                    String        @id @default(uuid())
+  taskName              String
+  taskType              TaskType
+  description           String?
+  detailedInstructions  String?
+  priorityLevel         PriorityLevel @default(MEDIUM)
+  duration              Int?          // Duration value
+  durationUnit          DurationUnit? // Duration unit
+  requiresApproval      Boolean       @default(false)
+  assigneeType          AssigneeType
+  approverType          AssigneeType?
+  
+  // Conditional Logic
+  isConditional         Boolean       @default(false)
+  conditionalLogic      Json?         // Condition rules
+  
+  // Resources and Organization
+  resources             Json?         // Array of resources
+  tags                  String[]      // Tags for categorization
+  
+  // Metadata
+  isActive              Boolean       @default(true)
+  createdBy             String?       // Admin who created this task
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  
+  // Relations
+  workflowTasks         WorkflowTask[]
+  
+  @@index([taskType])
+  @@index([assigneeType])
+  @@index([isActive])
+  @@map("global_tasks")
+}
+
+// Workflow Templates
+model WorkflowTemplate {
+  id                    String        @id @default(uuid())
+  name                  String
+  description           String?
+  category              String?       // e.g., "Engineering", "Sales", "General"
+  isDefault             Boolean       @default(false)
+  
+  // Template Configuration
+  templateData          Json?         // Workflow structure and task assignments
+  
+  // Metadata
+  isActive              Boolean       @default(true)
+  createdBy             String?       // Admin who created this template
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  
+  // Relations
+  workflows             Workflow[]
+  
+  @@index([category])
+  @@index([isActive])
+  @@map("workflow_templates")
+}
+
+// Workflows
+model Workflow {
+  id                    String            @id @default(uuid())
+  name                  String
+  description           String?
+  status                WorkflowStatus    @default(DRAFT)
+  
+  // Template Reference
+  templateId            String?
+  template              WorkflowTemplate? @relation(fields: [templateId], references: [id])
+  
+  // Workflow Configuration
+  autoStart             Boolean           @default(false)
+  estimatedDuration     Int?              // Total estimated duration in days
+  
+  // Conditional Application
+  isConditional         Boolean           @default(false)
+  conditionalLogic      Json?             // Rules for when this workflow applies
+  
+  // Metadata
+  version               Int               @default(1)
+  isActive              Boolean           @default(true)
+  createdBy             String?           // Admin who created this workflow
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  
+  // Relations
+  workflowTasks         WorkflowTask[]
+  workflowInstances     WorkflowInstance[]
+  
+  @@index([status])
+  @@index([isActive])
+  @@index([templateId])
+  @@map("workflows")
+}
+
+// Workflow Tasks (Tasks assigned to specific workflows)
+model WorkflowTask {
+  id                    String        @id @default(uuid())
+  workflowId            String
+  workflow              Workflow      @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  
+  globalTaskId          String
+  globalTask            GlobalTask    @relation(fields: [globalTaskId], references: [id])
+  
+  // Task Configuration in Workflow
+  orderIndex            Int           // Order of task in workflow
+  isRequired            Boolean       @default(true)
+  deadlineDays          Int?          // Days from workflow start
+  
+  // Task Dependencies
+  dependencies          String[]      // Array of WorkflowTask IDs that must be completed first
+  
+  // Custom Overrides (optional overrides of global task settings)
+  customInstructions    String?       // Override global task instructions
+  customDuration        Int?          // Override global task duration
+  customDurationUnit    DurationUnit? // Override global task duration unit
+  customAssigneeType    AssigneeType? // Override global task assignee
+  customApproverType    AssigneeType? // Override global task approver
+  
+  // Metadata
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  
+  // Relations
+  taskInstances         TaskInstance[]
+  
+  @@unique([workflowId, globalTaskId]) // Prevent duplicate tasks in same workflow
+  @@index([workflowId])
+  @@index([globalTaskId])
+  @@index([orderIndex])
+  @@map("workflow_tasks")
+}
+
+// Workflow Instances (Per Employee)
+model WorkflowInstance {
+  id                    String                  @id @default(uuid())
+  workflowId            String
+  workflow              Workflow                @relation(fields: [workflowId], references: [id])
+  
+  employeeId            String
+  employee              Employee                @relation(fields: [employeeId], references: [id])
+  
+  // Instance Status
+  status                WorkflowInstanceStatus  @default(NOT_STARTED)
+  progressPercentage    Decimal                 @default(0) @db.Decimal(5,2)
+  
+  // Timeline
+  startedAt             DateTime?
+  completedAt           DateTime?
+  dueDate               DateTime?
+  
+  // Assignment
+  assignedBy            String?                 // Admin/ADMIN who assigned this workflow
+  
+  // Metadata
+  notes                 String?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  
+  // Relations
+  taskInstances         TaskInstance[]
+  
+  @@unique([workflowId, employeeId]) // One workflow instance per employee
+  @@index([employeeId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("workflow_instances")
+}
+
+// Task Instances (Per Employee Per Task)
+model TaskInstance {
+  id                    String              @id @default(uuid())
+  workflowInstanceId    String
+  workflowInstance      WorkflowInstance    @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  
+  workflowTaskId        String
+  workflowTask          WorkflowTask        @relation(fields: [workflowTaskId], references: [id])
+  
+  // Task Assignment
+  assignedTo            String?             // User ID of assigned person
+  approvedBy            String?             // User ID of approver
+  
+  // Task Status
+  status                TaskInstanceStatus  @default(NOT_STARTED)
+  
+  // Timeline
+  dueDate               DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  approvedAt            DateTime?
+  
+  // Task Data
+  completionNotes       String?
+  approvalNotes         String?
+  attachments           Json?               // Array of file references
+  formData              Json?               // Form submission data
+  
+  // Metadata
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@unique([workflowInstanceId, workflowTaskId]) // One task instance per workflow instance
+  @@index([assignedTo])
+  @@index([status])
+  @@index([dueDate])
+  @@map("task_instances")
 }

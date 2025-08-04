@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const GenderEnum = z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']);
 export const MaritalStatusEnum = z.enum(['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED', 'SEPARATED']);
 export const EmergencyContactRelationshipEnum = z.enum(['SPOUSE', 'PARENT', 'SIBLING', 'FRIEND', 'OTHER']);
-export const DepartmentEnum = z.enum(['HR', 'ENGINEERING', 'SALES', 'UI', 'DEVELOPER', 'OTHER']);
+export const DepartmentEnum = z.enum(['ADMIN', 'ENGINEERING', 'SALES', 'UI', 'DEVELOPER', 'OTHER']);
 export const EmploymentTypeEnum = z.enum(['FULL_TIME', 'PART_TIME', 'INTERN', 'CONTRACT']);
 export const RoleEnum = z.enum(['EMPLOYEE', 'MANAGER', 'ADMIN']);
 

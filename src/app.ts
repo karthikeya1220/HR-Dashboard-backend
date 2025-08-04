@@ -14,6 +14,7 @@ import { swaggerSpec } from './config/swagger';
 import userRoutes from './modules/user/route';
 import authRoutes from './modules/auth/route';
 import employeeRoutes from './modules/employee/route';
+import onboardingRoutes from './modules/onboarding/route';
 
 const app = express();
 
@@ -159,6 +160,7 @@ app.get('/', (req, res) => {
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1', employeeRoutes);
+app.use('/api/v1/onboarding', onboardingRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

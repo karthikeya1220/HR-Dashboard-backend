@@ -37,8 +37,10 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in createFullEmployee controller:', error);
       
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
       // Handle specific errors
-      if (error.message.includes('User already registered') || error.message.includes('already exists')) {
+      if (errorMessage.includes('User already registered') || errorMessage.includes('already exists')) {
         res.status(409).json({
           success: false,
           message: 'User with this email already exists',
@@ -47,7 +49,7 @@ export class EmployeeController {
         return;
       }
 
-      if (error.message.includes('Unique constraint failed')) {
+      if (errorMessage.includes('Unique constraint failed')) {
         res.status(409).json({
           success: false,
           message: 'Employee with this email or Supabase ID already exists',
@@ -58,7 +60,7 @@ export class EmployeeController {
 
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to create employee profile',
+        message: errorMessage || 'Failed to create employee profile',
         timestamp: new Date().toISOString(),
       });
     }
@@ -86,8 +88,10 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in createSupabaseUser controller:', error);
       
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
       // Handle specific Supabase errors
-      if (error.message.includes('User already registered')) {
+      if (errorMessage.includes('User already registered')) {
         res.status(409).json({
           success: false,
           message: 'User with this email already exists',
@@ -98,7 +102,7 @@ export class EmployeeController {
 
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to create Supabase user account',
+        message: errorMessage || 'Failed to create Supabase user account',
         timestamp: new Date().toISOString(),
       });
     }
@@ -126,8 +130,10 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in createEmployee controller:', error);
 
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
       // Handle specific errors
-      if (error.message.includes('Unique constraint failed')) {
+      if (errorMessage.includes('Unique constraint failed')) {
         res.status(409).json({
           success: false,
           message: 'Employee with this email or Supabase ID already exists',
@@ -136,10 +142,10 @@ export class EmployeeController {
         return;
       }
 
-      if (error.message.includes('not found')) {
+      if (errorMessage.includes('not found')) {
         res.status(404).json({
           success: false,
-          message: error.message,
+          message: errorMessage,
           timestamp: new Date().toISOString(),
         });
         return;
@@ -147,7 +153,7 @@ export class EmployeeController {
 
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to create employee profile',
+        message: errorMessage || 'Failed to create employee profile',
         timestamp: new Date().toISOString(),
       });
     }
@@ -174,7 +180,9 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in getEmployeeById controller:', error);
 
-      if (error.message.includes('not found')) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage.includes('not found')) {
         res.status(404).json({
           success: false,
           message: 'Employee not found',
@@ -185,7 +193,7 @@ export class EmployeeController {
 
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to retrieve employee profile',
+        message: errorMessage || 'Failed to retrieve employee profile',
         timestamp: new Date().toISOString(),
       });
     }
@@ -213,9 +221,11 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in getEmployees controller:', error);
 
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to retrieve employees',
+        message: errorMessage || 'Failed to retrieve employees',
         timestamp: new Date().toISOString(),
       });
     }
@@ -243,7 +253,9 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in updateEmployee controller:', error);
 
-      if (error.message.includes('not found')) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage.includes('not found')) {
         res.status(404).json({
           success: false,
           message: 'Employee not found',
@@ -252,7 +264,7 @@ export class EmployeeController {
         return;
       }
 
-      if (error.message.includes('Unique constraint failed')) {
+      if (errorMessage.includes('Unique constraint failed')) {
         res.status(409).json({
           success: false,
           message: 'Employee with this email already exists',
@@ -263,7 +275,7 @@ export class EmployeeController {
 
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to update employee profile',
+        message: errorMessage || 'Failed to update employee profile',
         timestamp: new Date().toISOString(),
       });
     }
@@ -289,7 +301,9 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in deleteEmployee controller:', error);
 
-      if (error.message.includes('not found')) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      if (errorMessage.includes('not found')) {
         res.status(404).json({
           success: false,
           message: 'Employee not found',
@@ -300,7 +314,7 @@ export class EmployeeController {
 
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to delete employee',
+        message: errorMessage || 'Failed to delete employee',
         timestamp: new Date().toISOString(),
       });
     }
@@ -325,9 +339,11 @@ export class EmployeeController {
     } catch (error: unknown) {
       logger.error('Error in getEmployeeStats controller:', error);
 
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
       res.status(500).json({
         success: false,
-        message: error.message || 'Failed to retrieve employee statistics',
+        message: errorMessage || 'Failed to retrieve employee statistics',
         timestamp: new Date().toISOString(),
       });
     }
