@@ -763,6 +763,660 @@ export class OnboardingService {
     }
   }
 
+  // ==================== WORKFLOW INSTANCE MANAGEMENT ====================
+
+  /**
+   * Create workflow instance for employee (assign workflow to employee)
+   */
+  static async createWorkflowInstance(data: CreateWorkflowInstanceInput, assignedBy: string) {
+    try {
+      logger.info(`Creating workflow instance for employee: ${data.employeeId}`);
+
+      // Verify workflow exists and is active
+      const workflow = await prisma.workflow.findUnique({
+        where: { id: data.workflowId },
+        include: {
+          workflowTasks: {
+            orderBy: { orderIndex: 'asc' },
+            include: {
+              globalTask: true,
+            },
+          },
+        },
+      });
+
+      if (!workflow) {
+        throw new Error('Workflow not found');
+      }
+
+      if (workflow.status !== 'ACTIVE') {
+        throw new Error('Cannot assign inactive workflow to employee');
+      }
+
+      // Verify employee exists
+      const employee = await prisma.employee.findUnique({
+        where: { id: data.employeeId },
+      });
+
+      if (!employee) {
+        throw new Error('Employee not found');
+      }
+
+      // Check if employee already has this workflow assigned
+      const existingInstance = await prisma.workflowInstance.findUnique({
+        where: {
+          workflowId_employeeId: {
+            workflowId: data.workflowId,
+            employeeId: data.employeeId,
+          },
+        },
+      });
+
+      if (existingInstance) {
+        throw new Error('Employee already has this workflow assigned');
+      }
+
+      // Calculate due date based on workflow estimated duration
+      let dueDate = null;
+      if (workflow.estimatedDuration) {
+        dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + workflow.estimatedDuration);
+      }
+
+      // Create workflow instance
+      const workflowInstance = await prisma.workflowInstance.create({
+        data: {
+          workflowId: data.workflowId,
+          employeeId: data.employeeId,
+          assignedBy,
+          dueDate,
+          notes: data.notes,
+        },
+        include: {
+          workflow: true,
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              jobTitle: true,
+              department: true,
+            },
+          },
+        },
+      });
+
+      // Create task instances for all workflow tasks
+      const taskInstances = [];
+      for (const workflowTask of workflow.workflowTasks) {
+        let taskDueDate = null;
+        if (workflowTask.deadlineDays) {
+          taskDueDate = new Date();
+          taskDueDate.setDate(taskDueDate.getDate() + workflowTask.deadlineDays);
+        }
+
+        // Determine assignee based on task type
+        let assignedTo = null;
+        const assigneeType = workflowTask.customAssigneeType || workflowTask.globalTask.assigneeType;
+        
+        if (assigneeType === 'EMPLOYEE') {
+          assignedTo = data.employeeId;
+        } else if (assigneeType === 'MANAGER' && employee.reportingManager) {
+          assignedTo = employee.reportingManager;
+        } else if (assigneeType === 'ADMIN') {
+          assignedTo = assignedBy; // Assign to the admin who created the instance
+        }
+
+        const taskInstance = await prisma.taskInstance.create({
+          data: {
+            workflowInstanceId: workflowInstance.id,
+            workflowTaskId: workflowTask.id,
+            assignedTo,
+            dueDate: taskDueDate,
+          },
+        });
+
+        taskInstances.push(taskInstance);
+
+        // Send notification for task assignment
+        if (assignedTo) {
+          const { NotificationService } = await import('../../services/notificationService');
+          await NotificationService.notifyTaskAssigned(
+            taskInstance.id,
+            assignedTo,
+            workflowTask.globalTask.taskName
+          );
+        }
+      }
+
+      // Send workflow assignment notification to employee
+      const { NotificationService } = await import('../../services/notificationService');
+      await NotificationService.notifyWorkflowAssigned(
+        workflowInstance.id,
+        data.employeeId,
+        workflow.name
+      );
+
+      // Notify manager if exists
+      if (employee.reportingManager) {
+        await NotificationService.notifyManagerAssigned(
+          employee.reportingManager,
+          data.employeeId,
+          `${employee.firstName} ${employee.lastName}`
+        );
+      }
+
+      logger.info(`Workflow instance created successfully: ${workflowInstance.id}`);
+      return {
+        ...workflowInstance,
+        taskInstances,
+      };
+    } catch (error) {
+      logger.error('Error in createWorkflowInstance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get workflow instances with filtering and pagination
+   */
+  static async getWorkflowInstances(query: GetWorkflowInstancesQueryInput) {
+    try {
+      const { page, limit, employeeId, workflowId, status, assignedBy } = query;
+      const skip = (page - 1) * limit;
+
+      // Build where clause
+      const where: Record<string, unknown> = {};
+
+      if (employeeId) {
+        where.employeeId = employeeId;
+      }
+
+      if (workflowId) {
+        where.workflowId = workflowId;
+      }
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (assignedBy) {
+        where.assignedBy = assignedBy;
+      }
+
+      const [instances, total] = await Promise.all([
+        prisma.workflowInstance.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            workflow: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                estimatedDuration: true,
+              },
+            },
+            employee: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                jobTitle: true,
+                department: true,
+              },
+            },
+            taskInstances: {
+              include: {
+                workflowTask: {
+                  include: {
+                    globalTask: {
+                      select: {
+                        id: true,
+                        taskName: true,
+                        taskType: true,
+                        priorityLevel: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        }),
+        prisma.workflowInstance.count({ where }),
+      ]);
+
+      return {
+        instances,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error('Error in getWorkflowInstances:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get workflow instance by ID
+   */
+  static async getWorkflowInstanceById(id: string) {
+    try {
+      const instance = await prisma.workflowInstance.findUnique({
+        where: { id },
+        include: {
+          workflow: {
+            include: {
+              workflowTasks: {
+                orderBy: { orderIndex: 'asc' },
+                include: {
+                  globalTask: true,
+                },
+              },
+            },
+          },
+          employee: true,
+          taskInstances: {
+            include: {
+              workflowTask: {
+                include: {
+                  globalTask: true,
+                },
+              },
+            },
+            orderBy: {
+              workflowTask: {
+                orderIndex: 'asc',
+              },
+            },
+          },
+        },
+      });
+
+      if (!instance) {
+        throw new Error('Workflow instance not found');
+      }
+
+      return instance;
+    } catch (error) {
+      logger.error('Error in getWorkflowInstanceById:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update workflow instance
+   */
+  static async updateWorkflowInstance(id: string, data: UpdateWorkflowInstanceInput) {
+    try {
+      logger.info(`Updating workflow instance: ${id}`);
+
+      const existingInstance = await prisma.workflowInstance.findUnique({
+        where: { id },
+      });
+
+      if (!existingInstance) {
+        throw new Error('Workflow instance not found');
+      }
+
+      const updatedInstance = await prisma.workflowInstance.update({
+        where: { id },
+        data,
+        include: {
+          workflow: true,
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              jobTitle: true,
+              department: true,
+            },
+          },
+        },
+      });
+
+      logger.info(`Workflow instance updated successfully: ${id}`);
+      return updatedInstance;
+    } catch (error) {
+      logger.error('Error in updateWorkflowInstance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update task instance status
+   */
+  static async updateTaskInstance(taskInstanceId: string, data: {
+    status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE' | 'SKIPPED' | 'CANCELLED';
+    completionNotes?: string;
+    approvalNotes?: string;
+    attachments?: any;
+    formData?: any;
+  }) {
+    try {
+      logger.info(`Updating task instance: ${taskInstanceId}`);
+
+      const existingTask = await prisma.taskInstance.findUnique({
+        where: { id: taskInstanceId },
+        include: {
+          workflowInstance: {
+            include: {
+              employee: true,
+            },
+          },
+          workflowTask: {
+            include: {
+              globalTask: true,
+            },
+          },
+        },
+      });
+
+      if (!existingTask) {
+        throw new Error('Task instance not found');
+      }
+
+      // Prepare update data
+      const updateData: any = { ...data };
+
+      // Set timestamps based on status
+      if (data.status === 'IN_PROGRESS' && !existingTask.startedAt) {
+        updateData.startedAt = new Date();
+      }
+
+      if (data.status === 'COMPLETED' && !existingTask.completedAt) {
+        updateData.completedAt = new Date();
+      }
+
+      // Update task instance
+      const updatedTask = await prisma.taskInstance.update({
+        where: { id: taskInstanceId },
+        data: updateData,
+        include: {
+          workflowInstance: {
+            include: {
+              employee: true,
+            },
+          },
+          workflowTask: {
+            include: {
+              globalTask: true,
+            },
+          },
+        },
+      });
+
+      // Send notifications based on status change
+      const { NotificationService } = await import('../../services/notificationService');
+
+      if (data.status === 'COMPLETED') {
+        // Notify manager about task completion
+        if (existingTask.workflowInstance.employee.reportingManager) {
+          await NotificationService.notifyTaskCompleted(
+            taskInstanceId,
+            existingTask.workflowInstance.employee.reportingManager,
+            `${existingTask.workflowInstance.employee.firstName} ${existingTask.workflowInstance.employee.lastName}`,
+            existingTask.workflowTask.globalTask.taskName
+          );
+        }
+
+        // If task requires approval, notify approver
+        if (existingTask.workflowTask.globalTask.requiresApproval) {
+          const approverType = existingTask.workflowTask.customApproverType || existingTask.workflowTask.globalTask.approverType;
+          let approverId = null;
+
+          if (approverType === 'MANAGER' && existingTask.workflowInstance.employee.reportingManager) {
+            approverId = existingTask.workflowInstance.employee.reportingManager;
+          } else if (approverType === 'ADMIN' && existingTask.workflowInstance.assignedBy) {
+            approverId = existingTask.workflowInstance.assignedBy;
+          }
+
+          if (approverId) {
+            await NotificationService.notifyApprovalRequired(
+              taskInstanceId,
+              approverId,
+              `${existingTask.workflowInstance.employee.firstName} ${existingTask.workflowInstance.employee.lastName}`,
+              existingTask.workflowTask.globalTask.taskName
+            );
+          }
+        }
+
+        // Update workflow instance progress
+        await this.updateWorkflowProgress(existingTask.workflowInstanceId);
+      }
+
+      logger.info(`Task instance updated successfully: ${taskInstanceId}`);
+      return updatedTask;
+    } catch (error) {
+      logger.error('Error in updateTaskInstance:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update workflow instance progress
+   */
+  static async updateWorkflowProgress(workflowInstanceId: string) {
+    try {
+      const workflowInstance = await prisma.workflowInstance.findUnique({
+        where: { id: workflowInstanceId },
+        include: {
+          taskInstances: true,
+        },
+      });
+
+      if (!workflowInstance) {
+        return;
+      }
+
+      const totalTasks = workflowInstance.taskInstances.length;
+      const completedTasks = workflowInstance.taskInstances.filter(t => t.status === 'COMPLETED').length;
+      const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
+      // Determine workflow status
+      let status = workflowInstance.status;
+      let completedAt = workflowInstance.completedAt;
+
+      if (progressPercentage === 100) {
+        status = 'COMPLETED';
+        completedAt = new Date();
+      } else if (progressPercentage > 0 && status === 'NOT_STARTED') {
+        status = 'IN_PROGRESS';
+      }
+
+      // Update workflow instance
+      await prisma.workflowInstance.update({
+        where: { id: workflowInstanceId },
+        data: {
+          progressPercentage,
+          status,
+          completedAt,
+          startedAt: workflowInstance.startedAt || (progressPercentage > 0 ? new Date() : null),
+        },
+      });
+
+      logger.info(`Workflow progress updated: ${workflowInstanceId} - ${progressPercentage}%`);
+    } catch (error) {
+      logger.error('Error updating workflow progress:', error);
+    }
+  }
+
+  /**
+   * Get employee's onboarding dashboard
+   */
+  static async getEmployeeOnboardingDashboard(employeeId: string) {
+    try {
+      const instances = await prisma.workflowInstance.findMany({
+        where: { employeeId },
+        include: {
+          workflow: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+            },
+          },
+          taskInstances: {
+            include: {
+              workflowTask: {
+                include: {
+                  globalTask: {
+                    select: {
+                      id: true,
+                      taskName: true,
+                      taskType: true,
+                      description: true,
+                      priorityLevel: true,
+                      resources: true,
+                    },
+                  },
+                },
+              },
+            },
+            orderBy: {
+              workflowTask: {
+                orderIndex: 'asc',
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Calculate summary statistics
+      const totalTasks = instances.reduce((sum, instance) => sum + instance.taskInstances.length, 0);
+      const completedTasks = instances.reduce((sum, instance) => 
+        sum + instance.taskInstances.filter(t => t.status === 'COMPLETED').length, 0
+      );
+      const overdueTasks = instances.reduce((sum, instance) => 
+        sum + instance.taskInstances.filter(t => t.status === 'OVERDUE').length, 0
+      );
+      const inProgressTasks = instances.reduce((sum, instance) => 
+        sum + instance.taskInstances.filter(t => t.status === 'IN_PROGRESS').length, 0
+      );
+
+      return {
+        instances,
+        summary: {
+          totalWorkflows: instances.length,
+          completedWorkflows: instances.filter(i => i.status === 'COMPLETED').length,
+          totalTasks,
+          completedTasks,
+          overdueTasks,
+          inProgressTasks,
+          overallProgress: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
+        },
+      };
+    } catch (error) {
+      logger.error('Error in getEmployeeOnboardingDashboard:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get manager's oversight dashboard
+   */
+  static async getManagerOversightDashboard(managerId: string) {
+    try {
+      // Get all employees reporting to this manager
+      const employees = await prisma.employee.findMany({
+        where: { reportingManager: managerId },
+        select: { id: true, firstName: true, lastName: true, email: true, jobTitle: true },
+      });
+
+      const employeeIds = employees.map(e => e.id);
+
+      // Get workflow instances for these employees
+      const instances = await prisma.workflowInstance.findMany({
+        where: { employeeId: { in: employeeIds } },
+        include: {
+          workflow: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+            },
+          },
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              jobTitle: true,
+            },
+          },
+          taskInstances: {
+            where: {
+              OR: [
+                { assignedTo: managerId }, // Tasks assigned to manager
+                { status: 'OVERDUE' }, // Overdue tasks
+                { 
+                  workflowTask: {
+                    globalTask: {
+                      requiresApproval: true,
+                    },
+                  },
+                  status: 'COMPLETED',
+                  approvedAt: null,
+                }, // Tasks requiring approval
+              ],
+            },
+            include: {
+              workflowTask: {
+                include: {
+                  globalTask: {
+                    select: {
+                      id: true,
+                      taskName: true,
+                      taskType: true,
+                      priorityLevel: true,
+                      requiresApproval: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Calculate summary statistics
+      const totalEmployees = employees.length;
+      const activeOnboardings = instances.filter(i => i.status === 'IN_PROGRESS').length;
+      const completedOnboardings = instances.filter(i => i.status === 'COMPLETED').length;
+      const tasksRequiringAttention = instances.reduce((sum, instance) => 
+        sum + instance.taskInstances.length, 0
+      );
+
+      return {
+        employees,
+        instances,
+        summary: {
+          totalEmployees,
+          activeOnboardings,
+          completedOnboardings,
+          tasksRequiringAttention,
+        },
+      };
+    } catch (error) {
+      logger.error('Error in getManagerOversightDashboard:', error);
+      throw error;
+    }
+  }
+
   // ==================== WORKFLOW STATISTICS ====================
 
   /**
@@ -775,6 +1429,8 @@ export class OnboardingService {
         activeWorkflows,
         totalTasks,
         totalTemplates,
+        totalInstances,
+        activeInstances,
         workflowsByStatus,
         tasksByType,
       ] = await Promise.all([
@@ -782,6 +1438,8 @@ export class OnboardingService {
         prisma.workflow.count({ where: { status: 'ACTIVE' } }),
         prisma.globalTask.count({ where: { isActive: true } }),
         prisma.workflowTemplate.count({ where: { isActive: true } }),
+        prisma.workflowInstance.count(),
+        prisma.workflowInstance.count({ where: { status: 'IN_PROGRESS' } }),
         prisma.workflow.groupBy({
           by: ['status'],
           _count: { status: true },
@@ -799,6 +1457,9 @@ export class OnboardingService {
         inactiveWorkflows: totalWorkflows - activeWorkflows,
         totalTasks,
         totalTemplates,
+        totalInstances,
+        activeInstances,
+        completedInstances: totalInstances - activeInstances,
         workflowsByStatus,
         tasksByType,
       };

@@ -15,7 +15,8 @@ import userRoutes from './modules/user/route';
 import authRoutes from './modules/auth/route';
 import employeeRoutes from './modules/employee/route';
 import onboardingRoutes from './modules/onboarding/route';
-
+import notificationRoutes from './modules/notifications/route';
+import analyticsRoutes from './modules/analytics/route';
 const app = express();
 
 // Trust proxy for accurate IP addresses
@@ -161,7 +162,8 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1', employeeRoutes);
 app.use('/api/v1/onboarding', onboardingRoutes);
-
+app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
 // 404 handler
 app.use('*', (req, res) => {
   logger.warn(`404 - Route not found: ${req.method} ${req.originalUrl}`);

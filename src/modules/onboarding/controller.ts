@@ -19,6 +19,9 @@ import {
   UpdateTaskOrderInput,
   AddTaskDependencyInput,
   GetWorkflowTaskByIdInput,
+  CreateWorkflowInstanceInput,
+  UpdateWorkflowInstanceInput,
+  GetWorkflowInstancesQueryInput,
 } from './schema';
 
 export class OnboardingController {
@@ -697,6 +700,260 @@ export class OnboardingController {
       res.status(500).json({
         success: false,
         message: error instanceof Error ? error.message : 'Failed to add task dependency',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  // ==================== WORKFLOW INSTANCE MANAGEMENT ====================
+
+  /**
+   * Create workflow instance (assign workflow to employee)
+   * POST /api/v1/onboarding/instances
+   */
+  static async createWorkflowInstance(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const data: CreateWorkflowInstanceInput = req.body;
+      const assignedBy = req.user?.id || 'system';
+
+      logger.info(`Admin ${req.user?.email} creating workflow instance for employee: ${data.employeeId}`);
+
+      const instance = await OnboardingService.createWorkflowInstance(data, assignedBy);
+
+      res.status(201).json({
+        success: true,
+        message: 'Workflow instance created successfully',
+        data: instance,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in createWorkflowInstance controller:', error);
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      if (error instanceof Error && error.message.includes('already has this workflow')) {
+        res.status(409).json({
+          success: false,
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to create workflow instance',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Get workflow instances with filtering
+   * GET /api/v1/onboarding/instances
+   */
+  static async getWorkflowInstances(req: Request, res: Response): Promise<void> {
+    try {
+      const query: GetWorkflowInstancesQueryInput = req.query as unknown as GetWorkflowInstancesQueryInput;
+
+      logger.info('Fetching workflow instances with filters:', query);
+
+      const result = await OnboardingService.getWorkflowInstances(query);
+
+      res.status(200).json({
+        success: true,
+        message: 'Workflow instances retrieved successfully',
+        data: result.instances,
+        pagination: result.pagination,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in getWorkflowInstances controller:', error);
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to retrieve workflow instances',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Get workflow instance by ID
+   * GET /api/v1/onboarding/instances/{instanceId}
+   */
+  static async getWorkflowInstanceById(req: Request, res: Response): Promise<void> {
+    try {
+      const { instanceId } = req.params;
+
+      logger.info(`Fetching workflow instance: ${instanceId}`);
+
+      const instance = await OnboardingService.getWorkflowInstanceById(instanceId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Workflow instance retrieved successfully',
+        data: instance,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in getWorkflowInstanceById controller:', error);
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message: 'Workflow instance not found',
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to retrieve workflow instance',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Update workflow instance
+   * PUT /api/v1/onboarding/instances/{instanceId}
+   */
+  static async updateWorkflowInstance(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { instanceId } = req.params;
+      const data: UpdateWorkflowInstanceInput = req.body;
+
+      logger.info(`Admin ${req.user?.email} updating workflow instance: ${instanceId}`);
+
+      const updatedInstance = await OnboardingService.updateWorkflowInstance(instanceId, data);
+
+      res.status(200).json({
+        success: true,
+        message: 'Workflow instance updated successfully',
+        data: updatedInstance,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in updateWorkflowInstance controller:', error);
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message: 'Workflow instance not found',
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update workflow instance',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Update task instance status
+   * PUT /api/v1/onboarding/instances/tasks/{taskInstanceId}
+   */
+  static async updateTaskInstance(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { taskInstanceId } = req.params;
+      const data = req.body;
+
+      logger.info(`User ${req.user?.email} updating task instance: ${taskInstanceId}`);
+
+      const updatedTask = await OnboardingService.updateTaskInstance(taskInstanceId, data);
+
+      res.status(200).json({
+        success: true,
+        message: 'Task instance updated successfully',
+        data: updatedTask,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in updateTaskInstance controller:', error);
+
+      if (error instanceof Error && error.message.includes('not found')) {
+        res.status(404).json({
+          success: false,
+          message: 'Task instance not found',
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to update task instance',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Get employee's onboarding dashboard
+   * GET /api/v1/onboarding/dashboard/employee/{employeeId}
+   */
+  static async getEmployeeOnboardingDashboard(req: Request, res: Response): Promise<void> {
+    try {
+      const { employeeId } = req.params;
+
+      logger.info(`Fetching onboarding dashboard for employee: ${employeeId}`);
+
+      const dashboard = await OnboardingService.getEmployeeOnboardingDashboard(employeeId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Employee onboarding dashboard retrieved successfully',
+        data: dashboard,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in getEmployeeOnboardingDashboard controller:', error);
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to retrieve employee onboarding dashboard',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  /**
+   * Get manager's oversight dashboard
+   * GET /api/v1/onboarding/dashboard/manager/{managerId}
+   */
+  static async getManagerOversightDashboard(req: Request, res: Response): Promise<void> {
+    try {
+      const { managerId } = req.params;
+
+      logger.info(`Fetching oversight dashboard for manager: ${managerId}`);
+
+      const dashboard = await OnboardingService.getManagerOversightDashboard(managerId);
+
+      res.status(200).json({
+        success: true,
+        message: 'Manager oversight dashboard retrieved successfully',
+        data: dashboard,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.error('Error in getManagerOversightDashboard controller:', error);
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to retrieve manager oversight dashboard',
         timestamp: new Date().toISOString(),
       });
     }

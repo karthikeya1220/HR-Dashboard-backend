@@ -20,6 +20,9 @@ import {
   updateTaskOrderSchema,
   addTaskDependencySchema,
   getWorkflowTaskByIdSchema,
+  createWorkflowInstanceSchema,
+  updateWorkflowInstanceSchema,
+  getWorkflowInstancesQuerySchema,
 } from './schema';
 
 const router = Router();
@@ -418,6 +421,141 @@ router.post(
     body: addTaskDependencySchema 
   }),
   OnboardingController.addTaskDependency
+);
+
+// ==================== WORKFLOW INSTANCE MANAGEMENT ====================
+
+/**
+ * @swagger
+ * /api/v1/onboarding/instances:
+ *   post:
+ *     summary: Create workflow instance (assign workflow to employee)
+ *     tags: [Workflow Instances]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Workflow instance created successfully
+ */
+router.post(
+  '/instances',
+  verifyToken,
+  requireAdmin,
+  validateRequest({ body: createWorkflowInstanceSchema }),
+  OnboardingController.createWorkflowInstance
+);
+
+/**
+ * @swagger
+ * /api/v1/onboarding/instances:
+ *   get:
+ *     summary: Get workflow instances with filtering
+ *     tags: [Workflow Instances]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Workflow instances retrieved successfully
+ */
+router.get(
+  '/instances',
+  verifyToken,
+  validateRequest({ query: getWorkflowInstancesQuerySchema }),
+  OnboardingController.getWorkflowInstances
+);
+
+/**
+ * @swagger
+ * /api/v1/onboarding/instances/{instanceId}:
+ *   get:
+ *     summary: Get workflow instance by ID
+ *     tags: [Workflow Instances]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Workflow instance retrieved successfully
+ */
+router.get(
+  '/instances/:instanceId',
+  verifyToken,
+  OnboardingController.getWorkflowInstanceById
+);
+
+/**
+ * @swagger
+ * /api/v1/onboarding/instances/{instanceId}:
+ *   put:
+ *     summary: Update workflow instance
+ *     tags: [Workflow Instances]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Workflow instance updated successfully
+ */
+router.put(
+  '/instances/:instanceId',
+  verifyToken,
+  requireAdmin,
+  validateRequest({ body: updateWorkflowInstanceSchema }),
+  OnboardingController.updateWorkflowInstance
+);
+
+/**
+ * @swagger
+ * /api/v1/onboarding/instances/tasks/{taskInstanceId}:
+ *   put:
+ *     summary: Update task instance status
+ *     tags: [Workflow Instances]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Task instance updated successfully
+ */
+router.put(
+  '/instances/tasks/:taskInstanceId',
+  verifyToken,
+  OnboardingController.updateTaskInstance
+);
+
+// ==================== DASHBOARD ENDPOINTS ====================
+
+/**
+ * @swagger
+ * /api/v1/onboarding/dashboard/employee/{employeeId}:
+ *   get:
+ *     summary: Get employee's onboarding dashboard
+ *     tags: [Dashboards]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Employee onboarding dashboard retrieved successfully
+ */
+router.get(
+  '/dashboard/employee/:employeeId',
+  verifyToken,
+  OnboardingController.getEmployeeOnboardingDashboard
+);
+
+/**
+ * @swagger
+ * /api/v1/onboarding/dashboard/manager/{managerId}:
+ *   get:
+ *     summary: Get manager's oversight dashboard
+ *     tags: [Dashboards]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Manager oversight dashboard retrieved successfully
+ */
+router.get(
+  '/dashboard/manager/:managerId',
+  verifyToken,
+  OnboardingController.getManagerOversightDashboard
 );
 
 export default router;

@@ -225,7 +225,8 @@ model GlobalTask {
   
   // Relations
   workflowTasks         WorkflowTask[]
-  
+  taskResources         TaskResource[]
+  taskAnalytics         TaskAnalytics[]  
   @@index([taskType])
   @@index([assigneeType])
   @@index([isActive])
@@ -286,6 +287,7 @@ model Workflow {
   // Relations
   workflowTasks         WorkflowTask[]
   workflowInstances     WorkflowInstance[]
+  workflowAnalytics     WorkflowAnalytics[]
   
   @@index([status])
   @@index([isActive])
@@ -404,4 +406,194 @@ model TaskInstance {
   @@index([status])
   @@index([dueDate])
   @@map("task_instances")
+}
+
+// Notification System
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_COMPLETED
+  TASK_OVERDUE
+  WORKFLOW_ASSIGNED
+  WORKFLOW_COMPLETED
+  MANAGER_ASSIGNED
+  APPROVAL_REQUIRED
+  SYSTEM_ALERT
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model Notification {
+  id                    String              @id @default(uuid())
+  
+  // Notification Details
+  type                  NotificationType
+  title                 String
+  message               String
+  channel               NotificationChannel
+  status                NotificationStatus  @default(PENDING)
+  
+  // Recipients
+  recipientId           String              // User ID of recipient
+  recipientEmail        String?             // Email for email notifications
+  
+  // Related Entities
+  workflowInstanceId    String?
+  taskInstanceId        String?
+  employeeId            String?
+  
+  // Metadata
+  data                  Json?               // Additional notification data
+  sentAt                DateTime?
+  deliveredAt           DateTime?
+  readAt                DateTime?
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@index([recipientId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// Role Assignment Rules
+model RoleAssignmentRule {
+  id                    String              @id @default(uuid())
+  
+  // Rule Configuration
+  name                  String
+  description           String?
+  isActive              Boolean             @default(true)
+  priority              Int                 @default(0) // Higher priority rules are evaluated first
+  
+  // Conditions
+  conditions            Json                // Array of conditions to match
+  targetRole            Role                // Role to assign when conditions match
+  
+  // Metadata
+  createdBy             String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@index([isActive])
+  @@index([priority])
+  @@map("role_assignment_rules")
+}
+
+// Document and Resource Management
+enum ResourceType {
+  DOCUMENT
+  LINK
+  VIDEO
+  IMAGE
+  FORM
+  TOOL
+  CONTACT
+}
+
+model TaskResource {
+  id                    String              @id @default(uuid())
+  
+  // Resource Details
+  name                  String
+  description           String?
+  type                  ResourceType
+  url                   String?             // For links or file URLs
+  filePath              String?             // For uploaded files
+  fileName              String?             // Original file name
+  fileSize              Int?                // File size in bytes
+  mimeType              String?             // File MIME type
+  
+  // Metadata
+  metadata              Json?               // Additional resource metadata
+  isRequired            Boolean             @default(false)
+  
+  // Relations
+  globalTaskId          String?
+  globalTask            GlobalTask?         @relation(fields: [globalTaskId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@index([globalTaskId])
+  @@index([type])
+  @@map("task_resources")
+}
+
+// Analytics and Reporting
+model WorkflowAnalytics {
+  id                    String              @id @default(uuid())
+  
+  // Analytics Data
+  workflowId            String
+  workflow              Workflow            @relation(fields: [workflowId], references: [id])
+  
+  // Metrics
+  totalInstances        Int                 @default(0)
+  completedInstances    Int                 @default(0)
+  averageCompletionTime Decimal?            @db.Decimal(10,2) // In hours
+  averageTasksPerInstance Decimal?          @db.Decimal(10,2)
+  
+  // Time-based metrics
+  reportDate            DateTime            @default(now())
+  periodStart           DateTime
+  periodEnd             DateTime
+  
+  // Additional metrics
+  metricsData           Json?               // Detailed analytics data
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@unique([workflowId, reportDate])
+  @@index([workflowId])
+  @@index([reportDate])
+  @@map("workflow_analytics")
+}
+
+model TaskAnalytics {
+  id                    String              @id @default(uuid())
+  
+  // Analytics Data
+  globalTaskId          String
+  globalTask            GlobalTask          @relation(fields: [globalTaskId], references: [id])
+  
+  // Metrics
+  totalAssignments      Int                 @default(0)
+  completedAssignments  Int                 @default(0)
+  averageCompletionTime Decimal?            @db.Decimal(10,2) // In hours
+  overdueTasks          Int                 @default(0)
+  
+  // Time-based metrics
+  reportDate            DateTime            @default(now())
+  periodStart           DateTime
+  periodEnd             DateTime
+  
+  // Additional metrics
+  metricsData           Json?               // Detailed analytics data
+  
+  // Timestamps
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@unique([globalTaskId, reportDate])
+  @@index([globalTaskId])
+  @@index([reportDate])
+  @@map("task_analytics")
 }

@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { supabaseAdmin } from '../../config/supabase';
 import { logger } from '../../utils/logger';
+import { RoleAssignmentService } from '../../services/roleAssignmentService';
+import { NotificationService } from '../../services/notificationService';
 import {
   CreateSupabaseUserInput,
   CreateFullEmployeeInput,
