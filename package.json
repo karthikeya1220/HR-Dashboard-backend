@@ -1,3 +1,4 @@
+
 {
   "name": "dashboard-backend",
   "version": "1.0.0",
@@ -14,7 +15,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "prepare": "husky install"
+    "prepare": "command -v husky >/dev/null 2>&1 && husky install || true"
   },
   "keywords": [
     "express",
