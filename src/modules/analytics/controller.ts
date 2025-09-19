@@ -113,7 +113,10 @@ export class AnalyticsController {
    * Generate analytics for all workflows
    * POST /api/v1/analytics/workflows/generate
    */
-  static async generateAllWorkflowAnalytics(req: AuthenticatedRequest, res: Response): Promise<void> {
+  static async generateAllWorkflowAnalytics(
+    req: AuthenticatedRequest,
+    res: Response
+  ): Promise<void> {
     try {
       const days = parseInt(req.body.days as string) || 30;
 

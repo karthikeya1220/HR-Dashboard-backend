@@ -64,12 +64,7 @@ const router = Router();
  *       500:
  *         description: Server error
  */
-router.get(
-  '/dashboard',
-  verifyToken,
-  requireAdmin,
-  AnalyticsController.getSystemAnalytics
-);
+router.get('/dashboard', verifyToken, requireAdmin, AnalyticsController.getSystemAnalytics);
 
 /**
  * @swagger
@@ -166,12 +161,7 @@ router.get(
  *       500:
  *         description: Server error
  */
-router.get(
-  '/tasks/:taskId',
-  verifyToken,
-  requireAdmin,
-  AnalyticsController.getTaskAnalytics
-);
+router.get('/tasks/:taskId', verifyToken, requireAdmin, AnalyticsController.getTaskAnalytics);
 
 /**
  * @swagger

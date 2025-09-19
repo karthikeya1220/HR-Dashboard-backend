@@ -1,0 +1,208 @@
+
+
+### **System Architecture**
+
+#### **1. Core Modules**
+1. **Workflow Management:**
+   - Handles the creation, assignment, and updates of workflows and tasks.
+   - Stores workflow definitions and individual onboarding instances.
+
+2. **Task Management:**
+   - Manages tasks within workflows, including their assignment, status updates, and dependencies.
+
+3. **Notification System:**
+   - Sends notifications (in-app or email) to employees and managers about onboarding progress and task assignments.
+
+4. **Role-Based Access Control (RBAC):**
+   - Ensures secure access to APIs based on roles (Admin, Manager, Employee).
+
+5. **Error Handling and Atomic Operations:**
+   - Implements retry mechanisms and transaction-based operations to ensure data consistency.
+
+---
+
+### **Revised API Flow**
+
+#### **1. Admin Operations**
+- **Create Onboarding Instance:**
+  - **Endpoint:** `POST /api/v1/onboarding`
+    {
+      "employee_id": "uuid",
+      "workflow_id": "uuid",
+      "start_date": "YYYY-MM-DD",
+      "priority_level": "HIGH",
+      "onboarding_manager_id": "uuid", // Optional
+      "additional_notes": "string"
+    }
+    ```
+  - **Flow:**
+    - Validate `employee_id` and `workflow_id`.
+    - Create an onboarding instance and assign tasks to the employee.
+    - Notify the employee and manager (if assigned).
+
+- **Assign Manager:**
+  - **Endpoint:** `PATCH /api/v1/onboarding/{onboarding_instance_id}/manager`
+  - **Flow:**
+    - Validate `manager_id` (must have the "Manager" role).
+    - Assign the manager to the onboarding instance.
+    - Notify the manager about the assignment.
+
+---
+
+#### **2. Employee Operations**
+- **View Workflow and Tasks:**
+  - **Endpoint:** `GET /api/v1/onboarding/{employee_id}/workflow`
+  - **Flow:**
+    - Fetch the onboarding workflow and task statuses for the employee.
+    - Ensure the employee can only access their own onboarding data.
+
+- **View All Tasks:**
+  - **Endpoint:** `GET /api/v1/onboarding/{employee_id}/workflow/tasks`
+  - **Flow:**
+    - Fetch all tasks assigned to the employee within the workflow.
+
+- **View Specific Task:**
+  - **Endpoint:** `GET /api/v1/onboarding/{employee_id}/workflow/tasks/{task_id}`
+  - **Flow:**
+    - Fetch details of a specific task assigned to the employee.
+
+- **Update Task Status:**
+  - **Endpoint:** `PATCH /api/v1/onboarding/{employee_id}/workflow/tasks/{task_id}`
+  - **Payload:**
+    ```json
+    {
+      "status": "IN_PROGRESS",
+      "comments": "string"
+    }
+    ```
+  - **Flow:**
+    - Validate the task ID and ensure it belongs to the employee.
+    - Update the task status and log the update.
+
+---
+
+#### **3. Manager Operations**
+- **Monitor Employee Onboarding:**
+  - **Endpoint:** `GET /api/v1/onboarding/{employee_id}/workflow`
+  - **Flow:**
+    - Allow managers to view the onboarding progress and task statuses of employees assigned to them.
+    - Ensure role-based access control to prevent unauthorized access.
+
+- **View Assigned Employees' Tasks:**
+  - **Endpoint:** `GET /api/v1/onboarding/manager/{manager_id}/tasks`
+  - **Flow:**
+    - Fetch all tasks assigned to employees under the manager's supervision.
+    - Include task statuses and progress summaries.
+
+
+
+### **Key Improvements**
+
+1. **Atomic Operations:**
+   - Use database transactions to ensure consistency when creating onboarding instances and assigning tasks.
+   - Implement retry mechanisms for partial failures (e.g., notification failures).
+
+2. **Notification System:**
+   - Start with in-app notifications minimally for employees and managers.
+   - Include a summary of onboarding tasks in notifications for better context.
+   - Scale to email or push notifications in the future.
+
+3. **Role-Based Access Control:**
+   - Use middleware to enforce RBAC for all endpoints.
+   - Validate roles (Admin, Manager, Employee) before processing requests.
+
+4. **Scalability:**
+   - Use indexed database tables for workflows and tasks to handle large-scale operations efficiently.
+   - Design APIs to support pagination for task and workflow retrieval.
+
+5. **Error Handling:**
+   - Return meaningful HTTP status codes and error messages.
+   - Log all errors for debugging and monitoring.
+
+6. **Partial Updates:**
+   - Use `PATCH` endpoints for updating specific fields (e.g., task status, comments) to reduce payload size and improve performance.
+
+---
+
+### **Example Notification Flow**
+1. **Employee Notification:**
+   - Triggered when an onboarding instance is created.
+   - Message: "Your onboarding process has started. Please complete the assigned tasks by the deadlines."
+
+2. **Manager Notification:**
+   - Triggered when an employee is assigned to the manager.
+   - Message: "You have been assigned to onboard [Employee Name]. Monitor their progress and assist as needed."
+
+### **3. Technical Implementation Details**
+
+#### **Authentication & Authorization**
+- Use existing Supabase authentication middleware from `src/middlewares/supabaseAuth.ts`
+- Implement role-based access control using `requireRole()` middleware
+- Validate resource ownership (employees can only access their own data)
+
+#### **Request/Response Schemas**
+- Define Zod validation schemas in `src/modules/onboarding/schema.ts`
+- Include proper error handling with meaningful HTTP status codes
+- Follow existing API response patterns with `success`, `message`, `data` structure
+
+#### **Database Operations**
+- Use Prisma transactions for atomic operations (creating instances + assigning tasks)
+- Implement proper error handling and rollback mechanisms
+- Add database indexes for performance on frequently queried fields
+
+#### **API Payload Examples**
+Create Onboarding Instance:
+```json
+{
+  "employee_id": "uuid",
+  "workflow_id": "uuid", 
+  "start_date": "2024-01-15",
+  "priority_level": "HIGH",
+  "onboarding_manager_id": "uuid",
+  "additional_notes": "New hire in engineering team"
+}
+```
+
+Update Task Status:
+```json
+{
+  "status": "IN_PROGRESS",
+  "comments": "Started reviewing company handbook",
+  "completion_notes": "50% complete"
+}
+```
+
+### **4. Module Structure**
+Follow existing modular architecture pattern:
+- `src/modules/onboarding/controller.ts` - HTTP request handlers
+- `src/modules/onboarding/service.ts` - Business logic
+- `src/modules/onboarding/routes.ts` - Route definitions
+- `src/modules/onboarding/schema.ts` - Validation schemas
+
+### **5. Integration Requirements**
+- Integrate with existing employee management system for employee data
+- Use existing logging system (`src/utils/logger.ts`)
+- Follow existing error handling patterns
+- Add routes to main app in `src/app.ts`
+
+### **6. Quality Requirements**
+- Include comprehensive error handling for edge cases
+- Implement proper logging for audit trails
+- Add input validation for all endpoints
+- Ensure data consistency with database transactions
+- Include pagination for list endpoints
+- Add Swagger documentation comments
+
+### **7. Future-Proofing**
+- Design APIs to support future notification system integration
+- Structure data models to accommodate document management features
+- Include hooks for future workflow automation features
+
+Implement this system incrementally, starting with the database schema, then core CRUD operations, followed by the business logic for workflow management and task assignment.
+
+
+
+make sure you build the application and test with curl opertions and make sure you have the correct endpoints and payloads.
+
+ADD SWAGER DOCUMENTATION COMMENTS TO ALL ENDPOINTS
+- Ensure all endpoints are documented with Swagger for easy reference and testing.

@@ -4,7 +4,15 @@ import { logger } from '../utils/logger.js';
 const prisma = new PrismaClient();
 
 export interface NotificationData {
-  type: 'TASK_ASSIGNED' | 'TASK_COMPLETED' | 'TASK_OVERDUE' | 'WORKFLOW_ASSIGNED' | 'WORKFLOW_COMPLETED' | 'MANAGER_ASSIGNED' | 'APPROVAL_REQUIRED' | 'SYSTEM_ALERT';
+  type:
+    | 'TASK_ASSIGNED'
+    | 'TASK_COMPLETED'
+    | 'TASK_OVERDUE'
+    | 'WORKFLOW_ASSIGNED'
+    | 'WORKFLOW_COMPLETED'
+    | 'MANAGER_ASSIGNED'
+    | 'APPROVAL_REQUIRED'
+    | 'SYSTEM_ALERT';
   title: string;
   message: string;
   recipientId: string;
@@ -21,7 +29,9 @@ export class NotificationService {
    */
   static async createNotification(notificationData: NotificationData) {
     try {
-      logger.info(`Creating notification: ${notificationData.type} for user: ${notificationData.recipientId}`);
+      logger.info(
+        `Creating notification: ${notificationData.type} for user: ${notificationData.recipientId}`
+      );
 
       // Create in-app notification
       const inAppNotification = await prisma.notification.create({
@@ -93,7 +103,7 @@ export class NotificationService {
         recipientEmail: employee.email,
         taskInstanceId,
         employeeId,
-        data: { 
+        data: {
           taskName,
           employeeName: `${employee.firstName} ${employee.lastName}`,
         },
@@ -107,7 +117,11 @@ export class NotificationService {
   /**
    * Send workflow assignment notification
    */
-  static async notifyWorkflowAssigned(workflowInstanceId: string, employeeId: string, workflowName: string) {
+  static async notifyWorkflowAssigned(
+    workflowInstanceId: string,
+    employeeId: string,
+    workflowName: string
+  ) {
     try {
       const employee = await prisma.employee.findUnique({
         where: { id: employeeId },
@@ -125,7 +139,7 @@ export class NotificationService {
         recipientEmail: employee.email,
         workflowInstanceId,
         employeeId,
-        data: { 
+        data: {
           workflowName,
           employeeName: `${employee.firstName} ${employee.lastName}`,
         },
@@ -156,7 +170,7 @@ export class NotificationService {
         recipientId: managerId,
         recipientEmail: manager.email,
         employeeId,
-        data: { 
+        data: {
           employeeName,
           managerName: `${manager.firstName} ${manager.lastName}`,
         },
@@ -170,7 +184,12 @@ export class NotificationService {
   /**
    * Send task completion notification
    */
-  static async notifyTaskCompleted(taskInstanceId: string, managerId: string, employeeName: string, taskName: string) {
+  static async notifyTaskCompleted(
+    taskInstanceId: string,
+    managerId: string,
+    employeeName: string,
+    taskName: string
+  ) {
     try {
       const manager = await prisma.employee.findUnique({
         where: { id: managerId },
@@ -187,8 +206,8 @@ export class NotificationService {
         recipientId: managerId,
         recipientEmail: manager.email,
         taskInstanceId,
-        data: { 
-          employeeName, 
+        data: {
+          employeeName,
           taskName,
           managerName: `${manager.firstName} ${manager.lastName}`,
         },
@@ -202,7 +221,12 @@ export class NotificationService {
   /**
    * Send approval required notification
    */
-  static async notifyApprovalRequired(taskInstanceId: string, approverId: string, employeeName: string, taskName: string) {
+  static async notifyApprovalRequired(
+    taskInstanceId: string,
+    approverId: string,
+    employeeName: string,
+    taskName: string
+  ) {
     try {
       const approver = await prisma.employee.findUnique({
         where: { id: approverId },
@@ -219,8 +243,8 @@ export class NotificationService {
         recipientId: approverId,
         recipientEmail: approver.email,
         taskInstanceId,
-        data: { 
-          employeeName, 
+        data: {
+          employeeName,
           taskName,
           managerName: `${approver.firstName} ${approver.lastName}`,
         },
@@ -370,7 +394,7 @@ export class NotificationService {
               to: notificationData.recipientEmail,
               subject: notificationData.title,
               html: `<p>${notificationData.message}</p>`,
-              text: notificationData.message
+              text: notificationData.message,
             });
           }
           break;
@@ -425,7 +449,9 @@ export class NotificationService {
 
       for (const task of overdueTasks) {
         // Calculate days overdue
-        const daysOverdue = Math.ceil((new Date().getTime() - task.dueDate!.getTime()) / (1000 * 60 * 60 * 24));
+        const daysOverdue = Math.ceil(
+          (new Date().getTime() - task.dueDate!.getTime()) / (1000 * 60 * 60 * 24)
+        );
 
         // Update task status to overdue
         await prisma.taskInstance.update({
@@ -442,7 +468,7 @@ export class NotificationService {
           recipientEmail: task.workflowInstance.employee.email,
           taskInstanceId: task.id,
           employeeId: task.workflowInstance.employeeId,
-          data: { 
+          data: {
             taskName: task.workflowTask.globalTask.taskName,
             employeeName: `${task.workflowInstance.employee.firstName} ${task.workflowInstance.employee.lastName}`,
             daysOverdue,

@@ -97,7 +97,11 @@ export class RoleAssignmentService {
       await this.updateSupabaseUserRole(employee.supabaseId, assignedRole);
 
       logger.info(`Role assignment completed for employee ${employeeId}: ${assignedRole}`);
-      return { employeeId, assignedRole, ruleName: rules.find(r => r.targetRole === assignedRole)?.name };
+      return {
+        employeeId,
+        assignedRole,
+        ruleName: rules.find((r) => r.targetRole === assignedRole)?.name,
+      };
     } catch (error) {
       logger.error('Error evaluating role assignment:', error);
       throw error;
@@ -109,27 +113,29 @@ export class RoleAssignmentService {
    */
   private static evaluateCondition(employee: any, condition: RoleAssignmentCondition): boolean {
     const fieldValue = employee[condition.field];
-    
+
     if (!fieldValue) return false;
 
     switch (condition.operator) {
       case 'EQUALS':
         return fieldValue === condition.value;
-      
+
       case 'NOT_EQUALS':
         return fieldValue !== condition.value;
-      
+
       case 'IN':
         return Array.isArray(condition.value) && condition.value.includes(fieldValue);
-      
+
       case 'NOT_IN':
         return Array.isArray(condition.value) && !condition.value.includes(fieldValue);
-      
+
       case 'CONTAINS':
-        return typeof fieldValue === 'string' && 
-               typeof condition.value === 'string' && 
-               fieldValue.toLowerCase().includes(condition.value.toLowerCase());
-      
+        return (
+          typeof fieldValue === 'string' &&
+          typeof condition.value === 'string' &&
+          fieldValue.toLowerCase().includes(condition.value.toLowerCase())
+        );
+
       default:
         return false;
     }

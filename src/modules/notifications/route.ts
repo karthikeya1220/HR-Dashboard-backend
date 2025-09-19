@@ -95,11 +95,7 @@ const router = Router();
  *       500:
  *         description: Server error
  */
-router.get(
-  '/',
-  verifyToken,
-  NotificationController.getUserNotifications
-);
+router.get('/', verifyToken, NotificationController.getUserNotifications);
 
 /**
  * @swagger
@@ -135,11 +131,7 @@ router.get(
  *       500:
  *         description: Server error
  */
-router.get(
-  '/unread-count',
-  verifyToken,
-  NotificationController.getUnreadCount
-);
+router.get('/unread-count', verifyToken, NotificationController.getUnreadCount);
 
 /**
  * @swagger
@@ -179,11 +171,7 @@ router.get(
  *       500:
  *         description: Server error
  */
-router.patch(
-  '/:notificationId/read',
-  verifyToken,
-  NotificationController.markAsRead
-);
+router.patch('/:notificationId/read', verifyToken, NotificationController.markAsRead);
 
 /**
  * @swagger
@@ -241,11 +229,7 @@ router.patch(
  *       500:
  *         description: Server error
  */
-router.post(
-  '/test',
-  verifyToken,
-  NotificationController.testNotification
-);
+router.post('/test', verifyToken, NotificationController.testNotification);
 
 /**
  * @swagger
@@ -281,11 +265,6 @@ router.post(
  *       500:
  *         description: Server error
  */
-router.post(
-  '/check-overdue',
-  verifyToken,
-  requireAdmin,
-  NotificationController.checkOverdueTasks
-);
+router.post('/check-overdue', verifyToken, requireAdmin, NotificationController.checkOverdueTasks);
 
 export default router;

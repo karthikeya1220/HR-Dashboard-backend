@@ -284,7 +284,8 @@ export class OnboardingController {
    */
   static async getWorkflowTemplateById(req: Request, res: Response): Promise<void> {
     try {
-      const { templateId }: GetWorkflowTemplateByIdInput = req.params as unknown as GetWorkflowTemplateByIdInput;
+      const { templateId }: GetWorkflowTemplateByIdInput =
+        req.params as unknown as GetWorkflowTemplateByIdInput;
 
       logger.info(`Fetching workflow template: ${templateId}`);
 
@@ -354,7 +355,8 @@ export class OnboardingController {
    */
   static async createWorkflowFromTemplate(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { templateId }: GetWorkflowTemplateByIdInput = req.params as unknown as GetWorkflowTemplateByIdInput;
+      const { templateId }: GetWorkflowTemplateByIdInput =
+        req.params as unknown as GetWorkflowTemplateByIdInput;
       const createdBy = req.user?.id || 'system';
 
       logger.info(`Admin ${req.user?.email} creating workflow from template: ${templateId}`);
@@ -596,7 +598,8 @@ export class OnboardingController {
    */
   static async removeTaskFromWorkflow(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { workflowId, taskId }: GetWorkflowTaskByIdInput = req.params as unknown as GetWorkflowTaskByIdInput;
+      const { workflowId, taskId }: GetWorkflowTaskByIdInput =
+        req.params as unknown as GetWorkflowTaskByIdInput;
 
       logger.info(`Admin ${req.user?.email} removing task from workflow: ${workflowId}`);
 
@@ -633,7 +636,8 @@ export class OnboardingController {
    */
   static async updateTaskOrder(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { workflowId, taskId }: GetWorkflowTaskByIdInput = req.params as unknown as GetWorkflowTaskByIdInput;
+      const { workflowId, taskId }: GetWorkflowTaskByIdInput =
+        req.params as unknown as GetWorkflowTaskByIdInput;
       const data: UpdateTaskOrderInput = req.body;
 
       logger.info(`Admin ${req.user?.email} updating task order in workflow: ${workflowId}`);
@@ -672,7 +676,8 @@ export class OnboardingController {
    */
   static async addTaskDependency(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { workflowId, taskId }: GetWorkflowTaskByIdInput = req.params as unknown as GetWorkflowTaskByIdInput;
+      const { workflowId, taskId }: GetWorkflowTaskByIdInput =
+        req.params as unknown as GetWorkflowTaskByIdInput;
       const data: AddTaskDependencyInput = req.body;
 
       logger.info(`Admin ${req.user?.email} adding task dependency in workflow: ${workflowId}`);
@@ -716,7 +721,9 @@ export class OnboardingController {
       const data: CreateWorkflowInstanceInput = req.body;
       const assignedBy = req.user?.id || 'system';
 
-      logger.info(`Admin ${req.user?.email} creating workflow instance for employee: ${data.employeeId}`);
+      logger.info(
+        `Admin ${req.user?.email} creating workflow instance for employee: ${data.employeeId}`
+      );
 
       const instance = await OnboardingService.createWorkflowInstance(data, assignedBy);
 
@@ -761,7 +768,8 @@ export class OnboardingController {
    */
   static async getWorkflowInstances(req: Request, res: Response): Promise<void> {
     try {
-      const query: GetWorkflowInstancesQueryInput = req.query as unknown as GetWorkflowInstancesQueryInput;
+      const query: GetWorkflowInstancesQueryInput =
+        req.query as unknown as GetWorkflowInstancesQueryInput;
 
       logger.info('Fetching workflow instances with filters:', query);
 
@@ -924,7 +932,10 @@ export class OnboardingController {
 
       res.status(500).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to retrieve employee onboarding dashboard',
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Failed to retrieve employee onboarding dashboard',
         timestamp: new Date().toISOString(),
       });
     }
@@ -953,7 +964,8 @@ export class OnboardingController {
 
       res.status(500).json({
         success: false,
-        message: error instanceof Error ? error.message : 'Failed to retrieve manager oversight dashboard',
+        message:
+          error instanceof Error ? error.message : 'Failed to retrieve manager oversight dashboard',
         timestamp: new Date().toISOString(),
       });
     }

@@ -34,11 +34,11 @@ export class AnalyticsService {
 
       const instances = workflow.workflowInstances;
       const totalInstances = instances.length;
-      const completedInstances = instances.filter(i => i.status === 'COMPLETED').length;
+      const completedInstances = instances.filter((i) => i.status === 'COMPLETED').length;
 
       // Calculate average completion time for completed instances
-      const completedInstancesWithTime = instances.filter(i => 
-        i.status === 'COMPLETED' && i.startedAt && i.completedAt
+      const completedInstancesWithTime = instances.filter(
+        (i) => i.status === 'COMPLETED' && i.startedAt && i.completedAt
       );
 
       let averageCompletionTime = null;
@@ -52,15 +52,18 @@ export class AnalyticsService {
       }
 
       // Calculate average tasks per instance
-      const totalTasks = instances.reduce((sum, instance) => sum + instance.taskInstances.length, 0);
+      const totalTasks = instances.reduce(
+        (sum, instance) => sum + instance.taskInstances.length,
+        0
+      );
       const averageTasksPerInstance = totalInstances > 0 ? totalTasks / totalInstances : 0;
 
       // Additional metrics
       const metricsData = {
         completionRate: totalInstances > 0 ? (completedInstances / totalInstances) * 100 : 0,
-        inProgressInstances: instances.filter(i => i.status === 'IN_PROGRESS').length,
-        cancelledInstances: instances.filter(i => i.status === 'CANCELLED').length,
-        onHoldInstances: instances.filter(i => i.status === 'ON_HOLD').length,
+        inProgressInstances: instances.filter((i) => i.status === 'IN_PROGRESS').length,
+        cancelledInstances: instances.filter((i) => i.status === 'CANCELLED').length,
+        onHoldInstances: instances.filter((i) => i.status === 'ON_HOLD').length,
         taskStatusDistribution: this.calculateTaskStatusDistribution(instances),
         departmentDistribution: this.calculateDepartmentDistribution(instances),
       };
@@ -70,7 +73,11 @@ export class AnalyticsService {
         where: {
           workflowId_reportDate: {
             workflowId,
-            reportDate: new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()),
+            reportDate: new Date(
+              periodEnd.getFullYear(),
+              periodEnd.getMonth(),
+              periodEnd.getDate()
+            ),
           },
         },
         update: {
@@ -135,12 +142,12 @@ export class AnalyticsService {
       });
 
       const totalAssignments = taskInstances.length;
-      const completedAssignments = taskInstances.filter(t => t.status === 'COMPLETED').length;
-      const overdueTasks = taskInstances.filter(t => t.status === 'OVERDUE').length;
+      const completedAssignments = taskInstances.filter((t) => t.status === 'COMPLETED').length;
+      const overdueTasks = taskInstances.filter((t) => t.status === 'OVERDUE').length;
 
       // Calculate average completion time
-      const completedTasksWithTime = taskInstances.filter(t => 
-        t.status === 'COMPLETED' && t.startedAt && t.completedAt
+      const completedTasksWithTime = taskInstances.filter(
+        (t) => t.status === 'COMPLETED' && t.startedAt && t.completedAt
       );
 
       let averageCompletionTime = null;
@@ -156,10 +163,10 @@ export class AnalyticsService {
       // Additional metrics
       const metricsData = {
         completionRate: totalAssignments > 0 ? (completedAssignments / totalAssignments) * 100 : 0,
-        inProgressTasks: taskInstances.filter(t => t.status === 'IN_PROGRESS').length,
-        notStartedTasks: taskInstances.filter(t => t.status === 'NOT_STARTED').length,
-        skippedTasks: taskInstances.filter(t => t.status === 'SKIPPED').length,
-        cancelledTasks: taskInstances.filter(t => t.status === 'CANCELLED').length,
+        inProgressTasks: taskInstances.filter((t) => t.status === 'IN_PROGRESS').length,
+        notStartedTasks: taskInstances.filter((t) => t.status === 'NOT_STARTED').length,
+        skippedTasks: taskInstances.filter((t) => t.status === 'SKIPPED').length,
+        cancelledTasks: taskInstances.filter((t) => t.status === 'CANCELLED').length,
         departmentPerformance: this.calculateTaskDepartmentPerformance(taskInstances),
         jobTitlePerformance: this.calculateTaskJobTitlePerformance(taskInstances),
       };
@@ -169,7 +176,11 @@ export class AnalyticsService {
         where: {
           globalTaskId_reportDate: {
             globalTaskId: taskId,
-            reportDate: new Date(periodEnd.getFullYear(), periodEnd.getMonth(), periodEnd.getDate()),
+            reportDate: new Date(
+              periodEnd.getFullYear(),
+              periodEnd.getMonth(),
+              periodEnd.getDate()
+            ),
           },
         },
         update: {
@@ -229,9 +240,15 @@ export class AnalyticsService {
         current: realtimeData,
         summary: {
           totalPeriods: analytics.length,
-          averageCompletionRate: analytics.length > 0 
-            ? analytics.reduce((sum, a) => sum + (a.completedInstances / Math.max(a.totalInstances, 1)), 0) / analytics.length * 100
-            : 0,
+          averageCompletionRate:
+            analytics.length > 0
+              ? (analytics.reduce(
+                  (sum, a) => sum + a.completedInstances / Math.max(a.totalInstances, 1),
+                  0
+                ) /
+                  analytics.length) *
+                100
+              : 0,
         },
       };
     } catch (error) {
@@ -267,9 +284,15 @@ export class AnalyticsService {
         current: realtimeData,
         summary: {
           totalPeriods: analytics.length,
-          averageCompletionRate: analytics.length > 0 
-            ? analytics.reduce((sum, a) => sum + (a.completedAssignments / Math.max(a.totalAssignments, 1)), 0) / analytics.length * 100
-            : 0,
+          averageCompletionRate:
+            analytics.length > 0
+              ? (analytics.reduce(
+                  (sum, a) => sum + a.completedAssignments / Math.max(a.totalAssignments, 1),
+                  0
+                ) /
+                  analytics.length) *
+                100
+              : 0,
         },
       };
     } catch (error) {
@@ -334,7 +357,8 @@ export class AnalyticsService {
 
       // Calculate completion rates
       const totalOnboardings = activeOnboardings + completedOnboardings;
-      const completionRate = totalOnboardings > 0 ? (completedOnboardings / totalOnboardings) * 100 : 0;
+      const completionRate =
+        totalOnboardings > 0 ? (completedOnboardings / totalOnboardings) * 100 : 0;
 
       return {
         overview: {
@@ -363,11 +387,14 @@ export class AnalyticsService {
    * Calculate task status distribution
    */
   private static calculateTaskStatusDistribution(instances: any[]) {
-    const allTasks = instances.flatMap(i => i.taskInstances);
-    const statusCounts = allTasks.reduce((acc, task) => {
-      acc[task.status] = (acc[task.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const allTasks = instances.flatMap((i) => i.taskInstances);
+    const statusCounts = allTasks.reduce(
+      (acc, task) => {
+        acc[task.status] = (acc[task.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return statusCounts;
   }
@@ -376,11 +403,14 @@ export class AnalyticsService {
    * Calculate department distribution
    */
   private static calculateDepartmentDistribution(instances: any[]) {
-    const departmentCounts = instances.reduce((acc, instance) => {
-      const dept = instance.employee?.department || 'UNKNOWN';
-      acc[dept] = (acc[dept] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const departmentCounts = instances.reduce(
+      (acc, instance) => {
+        const dept = instance.employee?.department || 'UNKNOWN';
+        acc[dept] = (acc[dept] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     return departmentCounts;
   }
@@ -389,20 +419,23 @@ export class AnalyticsService {
    * Calculate task performance by department
    */
   private static calculateTaskDepartmentPerformance(taskInstances: any[]) {
-    const deptPerformance = taskInstances.reduce((acc, task) => {
-      const dept = task.workflowInstance.employee.department;
-      if (!acc[dept]) {
-        acc[dept] = { total: 0, completed: 0 };
-      }
-      acc[dept].total++;
-      if (task.status === 'COMPLETED') {
-        acc[dept].completed++;
-      }
-      return acc;
-    }, {} as Record<string, { total: number; completed: number }>);
+    const deptPerformance = taskInstances.reduce(
+      (acc, task) => {
+        const dept = task.workflowInstance.employee.department;
+        if (!acc[dept]) {
+          acc[dept] = { total: 0, completed: 0 };
+        }
+        acc[dept].total++;
+        if (task.status === 'COMPLETED') {
+          acc[dept].completed++;
+        }
+        return acc;
+      },
+      {} as Record<string, { total: number; completed: number }>
+    );
 
     // Calculate completion rates
-    Object.keys(deptPerformance).forEach(dept => {
+    Object.keys(deptPerformance).forEach((dept) => {
       const perf = deptPerformance[dept];
       (perf as any).completionRate = perf.total > 0 ? (perf.completed / perf.total) * 100 : 0;
     });
@@ -414,20 +447,23 @@ export class AnalyticsService {
    * Calculate task performance by job title
    */
   private static calculateTaskJobTitlePerformance(taskInstances: any[]) {
-    const titlePerformance = taskInstances.reduce((acc, task) => {
-      const title = task.workflowInstance.employee.jobTitle;
-      if (!acc[title]) {
-        acc[title] = { total: 0, completed: 0 };
-      }
-      acc[title].total++;
-      if (task.status === 'COMPLETED') {
-        acc[title].completed++;
-      }
-      return acc;
-    }, {} as Record<string, { total: number; completed: number }>);
+    const titlePerformance = taskInstances.reduce(
+      (acc, task) => {
+        const title = task.workflowInstance.employee.jobTitle;
+        if (!acc[title]) {
+          acc[title] = { total: 0, completed: 0 };
+        }
+        acc[title].total++;
+        if (task.status === 'COMPLETED') {
+          acc[title].completed++;
+        }
+        return acc;
+      },
+      {} as Record<string, { total: number; completed: number }>
+    );
 
     // Calculate completion rates
-    Object.keys(titlePerformance).forEach(title => {
+    Object.keys(titlePerformance).forEach((title) => {
       const perf = titlePerformance[title];
       (perf as any).completionRate = perf.total > 0 ? (perf.completed / perf.total) * 100 : 0;
     });
@@ -457,11 +493,14 @@ export class AnalyticsService {
       });
 
       // Group by week
-      const weeklyData = completions.reduce((acc, completion) => {
-        const week = this.getWeekKey(completion.completedAt!);
-        acc[week] = (acc[week] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const weeklyData = completions.reduce(
+        (acc, completion) => {
+          const week = this.getWeekKey(completion.completedAt!);
+          acc[week] = (acc[week] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       return weeklyData;
     } catch (error) {
@@ -490,33 +529,40 @@ export class AnalyticsService {
         },
       });
 
-      const deptPerformance = instances.reduce((acc, instance) => {
-        const dept = instance.employee.department;
-        if (!acc[dept]) {
-          acc[dept] = { 
-            totalInstances: 0, 
-            completedInstances: 0, 
-            totalTasks: 0, 
-            completedTasks: 0 
-          };
-        }
+      const deptPerformance = instances.reduce(
+        (acc, instance) => {
+          const dept = instance.employee.department;
+          if (!acc[dept]) {
+            acc[dept] = {
+              totalInstances: 0,
+              completedInstances: 0,
+              totalTasks: 0,
+              completedTasks: 0,
+            };
+          }
 
-        acc[dept].totalInstances++;
-        if (instance.status === 'COMPLETED') {
-          acc[dept].completedInstances++;
-        }
+          acc[dept].totalInstances++;
+          if (instance.status === 'COMPLETED') {
+            acc[dept].completedInstances++;
+          }
 
-        acc[dept].totalTasks += instance.taskInstances.length;
-        acc[dept].completedTasks += instance.taskInstances.filter(t => t.status === 'COMPLETED').length;
+          acc[dept].totalTasks += instance.taskInstances.length;
+          acc[dept].completedTasks += instance.taskInstances.filter(
+            (t) => t.status === 'COMPLETED'
+          ).length;
 
-        return acc;
-      }, {} as Record<string, any>);
+          return acc;
+        },
+        {} as Record<string, any>
+      );
 
       // Calculate rates
-      Object.keys(deptPerformance).forEach(dept => {
+      Object.keys(deptPerformance).forEach((dept) => {
         const perf = deptPerformance[dept];
-        perf.workflowCompletionRate = perf.totalInstances > 0 ? (perf.completedInstances / perf.totalInstances) * 100 : 0;
-        perf.taskCompletionRate = perf.totalTasks > 0 ? (perf.completedTasks / perf.totalTasks) * 100 : 0;
+        perf.workflowCompletionRate =
+          perf.totalInstances > 0 ? (perf.completedInstances / perf.totalInstances) * 100 : 0;
+        perf.taskCompletionRate =
+          perf.totalTasks > 0 ? (perf.completedTasks / perf.totalTasks) * 100 : 0;
       });
 
       return deptPerformance;

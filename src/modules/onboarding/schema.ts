@@ -120,7 +120,10 @@ export const getGlobalTasksQuerySchema = z.object({
   assigneeType: AssigneeTypeEnum.optional(),
   priorityLevel: PriorityLevelEnum.optional(),
   tags: z.string().optional(), // Comma-separated tags
-  isActive: z.string().transform((val) => val === 'true').optional(),
+  isActive: z
+    .string()
+    .transform((val) => val === 'true')
+    .optional(),
 });
 
 // Workflow Template Schemas
@@ -177,7 +180,10 @@ export const getWorkflowsQuerySchema = z.object({
   search: z.string().optional(),
   status: WorkflowStatusEnum.optional(),
   templateId: z.string().uuid().optional(),
-  isActive: z.string().transform((val) => val === 'true').optional(),
+  isActive: z
+    .string()
+    .transform((val) => val === 'true')
+    .optional(),
 });
 
 // Workflow Task Assignment Schemas
@@ -289,7 +295,10 @@ export const updateOnboardingInstanceSchema = z.object({
   priority_level: PriorityLevelEnum.optional(),
   onboarding_manager_id: z.string().uuid('Invalid manager ID format').optional(),
   additional_notes: z.string().max(1000).optional(),
-  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
+  due_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
+    .optional(),
 });
 
 export const assignManagerSchema = z.object({
@@ -300,11 +309,15 @@ export const updateTaskStatusSchema = z.object({
   status: TaskInstanceStatusEnum,
   comments: z.string().max(1000).optional(),
   completion_notes: z.string().max(1000).optional(),
-  attachments: z.array(z.object({
-    name: z.string(),
-    url: z.string().url(),
-    type: z.string(),
-  })).optional(),
+  attachments: z
+    .array(
+      z.object({
+        name: z.string(),
+        url: z.string().url(),
+        type: z.string(),
+      })
+    )
+    .optional(),
 });
 
 export const getOnboardingInstanceByIdSchema = z.object({

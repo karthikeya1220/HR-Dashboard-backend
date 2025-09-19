@@ -19,7 +19,7 @@ export class EmailService {
       logger.info(`📧 Content: ${emailData.text || emailData.html.substring(0, 100)}...`);
 
       // Simulate email sending delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Simulate 95% success rate
       const success = Math.random() > 0.05;
@@ -40,7 +40,11 @@ export class EmailService {
   /**
    * Send onboarding welcome email
    */
-  static async sendOnboardingWelcomeEmail(employeeEmail: string, employeeName: string, workflowName: string): Promise<boolean> {
+  static async sendOnboardingWelcomeEmail(
+    employeeEmail: string,
+    employeeName: string,
+    workflowName: string
+  ): Promise<boolean> {
     const emailData: EmailData = {
       to: employeeEmail,
       subject: `Welcome to the team! Your onboarding journey begins`,
@@ -72,7 +76,7 @@ export class EmailService {
           </p>
         </div>
       `,
-      text: `Welcome to the team, ${employeeName}! Your onboarding workflow "${workflowName}" has been assigned. Please complete the tasks as they become available.`
+      text: `Welcome to the team, ${employeeName}! Your onboarding workflow "${workflowName}" has been assigned. Please complete the tasks as they become available.`,
     };
 
     return this.sendEmail(emailData);
@@ -81,9 +85,14 @@ export class EmailService {
   /**
    * Send task assignment email
    */
-  static async sendTaskAssignmentEmail(employeeEmail: string, employeeName: string, taskName: string, dueDate?: Date): Promise<boolean> {
+  static async sendTaskAssignmentEmail(
+    employeeEmail: string,
+    employeeName: string,
+    taskName: string,
+    dueDate?: Date
+  ): Promise<boolean> {
     const dueDateText = dueDate ? ` (Due: ${dueDate.toLocaleDateString()})` : '';
-    
+
     const emailData: EmailData = {
       to: employeeEmail,
       subject: `New Task Assigned: ${taskName}`,
@@ -110,7 +119,7 @@ export class EmailService {
           </p>
         </div>
       `,
-      text: `Hi ${employeeName}, you have been assigned a new task: ${taskName}${dueDateText}. Please complete it in your onboarding dashboard.`
+      text: `Hi ${employeeName}, you have been assigned a new task: ${taskName}${dueDateText}. Please complete it in your onboarding dashboard.`,
     };
 
     return this.sendEmail(emailData);
@@ -119,7 +128,12 @@ export class EmailService {
   /**
    * Send manager notification email
    */
-  static async sendManagerNotificationEmail(managerEmail: string, managerName: string, employeeName: string, message: string): Promise<boolean> {
+  static async sendManagerNotificationEmail(
+    managerEmail: string,
+    managerName: string,
+    employeeName: string,
+    message: string
+  ): Promise<boolean> {
     const emailData: EmailData = {
       to: managerEmail,
       subject: `Onboarding Update: ${employeeName}`,
@@ -143,7 +157,7 @@ export class EmailService {
           </p>
         </div>
       `,
-      text: `Hi ${managerName}, update for ${employeeName}: ${message}`
+      text: `Hi ${managerName}, update for ${employeeName}: ${message}`,
     };
 
     return this.sendEmail(emailData);
@@ -152,7 +166,12 @@ export class EmailService {
   /**
    * Send task overdue notification
    */
-  static async sendTaskOverdueEmail(employeeEmail: string, employeeName: string, taskName: string, daysOverdue: number): Promise<boolean> {
+  static async sendTaskOverdueEmail(
+    employeeEmail: string,
+    employeeName: string,
+    taskName: string,
+    daysOverdue: number
+  ): Promise<boolean> {
     const emailData: EmailData = {
       to: employeeEmail,
       subject: `⚠️ Overdue Task: ${taskName}`,
@@ -179,7 +198,7 @@ export class EmailService {
           </p>
         </div>
       `,
-      text: `Hi ${employeeName}, your task "${taskName}" is ${daysOverdue} days overdue. Please complete it as soon as possible.`
+      text: `Hi ${employeeName}, your task "${taskName}" is ${daysOverdue} days overdue. Please complete it as soon as possible.`,
     };
 
     return this.sendEmail(emailData);

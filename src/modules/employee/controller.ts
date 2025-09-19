@@ -21,7 +21,9 @@ export class EmployeeController {
       const data: CreateFullEmployeeInput = req.body;
       const createdBy = req.user?.id || 'system';
 
-      logger.info(`Admin ${req.user?.email} creating full employee profile for: ${data.emailAddress}`);
+      logger.info(
+        `Admin ${req.user?.email} creating full employee profile for: ${data.emailAddress}`
+      );
 
       const result = await EmployeeService.createFullEmployee(data, createdBy);
 
@@ -36,11 +38,14 @@ export class EmployeeController {
       });
     } catch (error: unknown) {
       logger.error('Error in createFullEmployee controller:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       // Handle specific errors
-      if (errorMessage.includes('User already registered') || errorMessage.includes('already exists')) {
+      if (
+        errorMessage.includes('User already registered') ||
+        errorMessage.includes('already exists')
+      ) {
         res.status(409).json({
           success: false,
           message: 'User with this email already exists',
@@ -87,9 +92,9 @@ export class EmployeeController {
       });
     } catch (error: unknown) {
       logger.error('Error in createSupabaseUser controller:', error);
-      
+
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       // Handle specific Supabase errors
       if (errorMessage.includes('User already registered')) {
         res.status(409).json({

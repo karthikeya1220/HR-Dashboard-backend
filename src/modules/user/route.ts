@@ -42,7 +42,12 @@ const router = Router();
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/', verifyToken, validateRequest({ query: getUsersQuerySchema }), UserController.getUsers);
+router.get(
+  '/',
+  verifyToken,
+  validateRequest({ query: getUsersQuerySchema }),
+  UserController.getUsers
+);
 
 /**
  * @swagger
@@ -100,7 +105,12 @@ router.get('/stats', verifyToken, UserController.getUserStats);
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/:id', verifyToken, validateRequest({ params: getUserByIdSchema }), UserController.getUserById);
+router.get(
+  '/:id',
+  verifyToken,
+  validateRequest({ params: getUserByIdSchema }),
+  UserController.getUserById
+);
 
 /**
  * @swagger
@@ -160,7 +170,12 @@ router.get('/:id', verifyToken, validateRequest({ params: getUserByIdSchema }), 
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.post('/', verifyToken, validateRequest({ body: createUserSchema }), UserController.createUser);
+router.post(
+  '/',
+  verifyToken,
+  validateRequest({ body: createUserSchema }),
+  UserController.createUser
+);
 
 /**
  * @swagger
@@ -268,6 +283,11 @@ router.put(
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.delete('/:id', verifyToken, validateRequest({ params: getUserByIdSchema }), UserController.deleteUser);
+router.delete(
+  '/:id',
+  verifyToken,
+  validateRequest({ params: getUserByIdSchema }),
+  UserController.deleteUser
+);
 
 export default router;

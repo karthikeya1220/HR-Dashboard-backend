@@ -21,13 +21,13 @@ const router = Router();
  *     summary: Create complete employee profile (Two-step process)
  *     description: |
  *       Creates a complete employee profile using a two-step process:
- *       
+ *
  *       **Step 1**: Validate and prepare full profile data
- *       
+ *
  *       **Step 2**: Create Supabase user account with provided or auto-generated password
- *       
+ *
  *       **Step 3**: Create employee record in local database linked by auth_user_id
- *       
+ *
  *       If any step fails, automatic rollback ensures data consistency.
  *     tags: [Employees]
  *     security:
@@ -213,12 +213,7 @@ router.get(
  *       500:
  *         description: Server error
  */
-router.get(
-  '/employees/stats',
-  verifyToken,
-  requireAdmin,
-  EmployeeController.getEmployeeStats
-);
+router.get('/employees/stats', verifyToken, requireAdmin, EmployeeController.getEmployeeStats);
 
 /**
  * @swagger
@@ -305,9 +300,9 @@ router.patch(
   '/employees/:id',
   verifyToken,
   requireAdmin,
-  validateRequest({ 
+  validateRequest({
     params: getEmployeeByIdSchema,
-    body: updateEmployeeSchema 
+    body: updateEmployeeSchema,
   }),
   EmployeeController.updateEmployee
 );

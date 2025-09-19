@@ -706,11 +706,7 @@ export class OnboardingService {
   /**
    * Add task dependency
    */
-  static async addTaskDependency(
-    workflowId: string,
-    taskId: string,
-    data: AddTaskDependencyInput
-  ) {
+  static async addTaskDependency(workflowId: string, taskId: string, data: AddTaskDependencyInput) {
     try {
       logger.info(`Adding dependency for task ${taskId} in workflow ${workflowId}`);
 
@@ -858,8 +854,9 @@ export class OnboardingService {
 
         // Determine assignee based on task type
         let assignedTo = null;
-        const assigneeType = workflowTask.customAssigneeType || workflowTask.globalTask.assigneeType;
-        
+        const assigneeType =
+          workflowTask.customAssigneeType || workflowTask.globalTask.assigneeType;
+
         if (assigneeType === 'EMPLOYEE') {
           assignedTo = data.employeeId;
         } else if (assigneeType === 'MANAGER' && employee.reportingManager) {
@@ -1097,13 +1094,16 @@ export class OnboardingService {
   /**
    * Update task instance status
    */
-  static async updateTaskInstance(taskInstanceId: string, data: {
-    status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE' | 'SKIPPED' | 'CANCELLED';
-    completionNotes?: string;
-    approvalNotes?: string;
-    attachments?: any;
-    formData?: any;
-  }) {
+  static async updateTaskInstance(
+    taskInstanceId: string,
+    data: {
+      status?: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE' | 'SKIPPED' | 'CANCELLED';
+      completionNotes?: string;
+      approvalNotes?: string;
+      attachments?: any;
+      formData?: any;
+    }
+  ) {
     try {
       logger.info(`Updating task instance: ${taskInstanceId}`);
 
@@ -1173,10 +1173,15 @@ export class OnboardingService {
 
         // If task requires approval, notify approver
         if (existingTask.workflowTask.globalTask.requiresApproval) {
-          const approverType = existingTask.workflowTask.customApproverType || existingTask.workflowTask.globalTask.approverType;
+          const approverType =
+            existingTask.workflowTask.customApproverType ||
+            existingTask.workflowTask.globalTask.approverType;
           let approverId = null;
 
-          if (approverType === 'MANAGER' && existingTask.workflowInstance.employee.reportingManager) {
+          if (
+            approverType === 'MANAGER' &&
+            existingTask.workflowInstance.employee.reportingManager
+          ) {
             approverId = existingTask.workflowInstance.employee.reportingManager;
           } else if (approverType === 'ADMIN' && existingTask.workflowInstance.assignedBy) {
             approverId = existingTask.workflowInstance.assignedBy;
@@ -1221,7 +1226,9 @@ export class OnboardingService {
       }
 
       const totalTasks = workflowInstance.taskInstances.length;
-      const completedTasks = workflowInstance.taskInstances.filter(t => t.status === 'COMPLETED').length;
+      const completedTasks = workflowInstance.taskInstances.filter(
+        (t) => t.status === 'COMPLETED'
+      ).length;
       const progressPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
       // Determine workflow status
@@ -1295,22 +1302,31 @@ export class OnboardingService {
       });
 
       // Calculate summary statistics
-      const totalTasks = instances.reduce((sum, instance) => sum + instance.taskInstances.length, 0);
-      const completedTasks = instances.reduce((sum, instance) => 
-        sum + instance.taskInstances.filter(t => t.status === 'COMPLETED').length, 0
+      const totalTasks = instances.reduce(
+        (sum, instance) => sum + instance.taskInstances.length,
+        0
       );
-      const overdueTasks = instances.reduce((sum, instance) => 
-        sum + instance.taskInstances.filter(t => t.status === 'OVERDUE').length, 0
+      const completedTasks = instances.reduce(
+        (sum, instance) =>
+          sum + instance.taskInstances.filter((t) => t.status === 'COMPLETED').length,
+        0
       );
-      const inProgressTasks = instances.reduce((sum, instance) => 
-        sum + instance.taskInstances.filter(t => t.status === 'IN_PROGRESS').length, 0
+      const overdueTasks = instances.reduce(
+        (sum, instance) =>
+          sum + instance.taskInstances.filter((t) => t.status === 'OVERDUE').length,
+        0
+      );
+      const inProgressTasks = instances.reduce(
+        (sum, instance) =>
+          sum + instance.taskInstances.filter((t) => t.status === 'IN_PROGRESS').length,
+        0
       );
 
       return {
         instances,
         summary: {
           totalWorkflows: instances.length,
-          completedWorkflows: instances.filter(i => i.status === 'COMPLETED').length,
+          completedWorkflows: instances.filter((i) => i.status === 'COMPLETED').length,
           totalTasks,
           completedTasks,
           overdueTasks,
@@ -1335,7 +1351,7 @@ export class OnboardingService {
         select: { id: true, firstName: true, lastName: true, email: true, jobTitle: true },
       });
 
-      const employeeIds = employees.map(e => e.id);
+      const employeeIds = employees.map((e) => e.id);
 
       // Get workflow instances for these employees
       const instances = await prisma.workflowInstance.findMany({
@@ -1362,7 +1378,7 @@ export class OnboardingService {
               OR: [
                 { assignedTo: managerId }, // Tasks assigned to manager
                 { status: 'OVERDUE' }, // Overdue tasks
-                { 
+                {
                   workflowTask: {
                     globalTask: {
                       requiresApproval: true,
@@ -1395,10 +1411,11 @@ export class OnboardingService {
 
       // Calculate summary statistics
       const totalEmployees = employees.length;
-      const activeOnboardings = instances.filter(i => i.status === 'IN_PROGRESS').length;
-      const completedOnboardings = instances.filter(i => i.status === 'COMPLETED').length;
-      const tasksRequiringAttention = instances.reduce((sum, instance) => 
-        sum + instance.taskInstances.length, 0
+      const activeOnboardings = instances.filter((i) => i.status === 'IN_PROGRESS').length;
+      const completedOnboardings = instances.filter((i) => i.status === 'COMPLETED').length;
+      const tasksRequiringAttention = instances.reduce(
+        (sum, instance) => sum + instance.taskInstances.length,
+        0
       );
 
       return {

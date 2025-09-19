@@ -51,10 +51,7 @@ export class ResourceService {
   /**
    * Upload file and create resource
    */
-  static async uploadFileResource(
-    file: UploadedFile,
-    data: CreateResourceInput
-  ) {
+  static async uploadFileResource(file: UploadedFile, data: CreateResourceInput) {
     try {
       logger.info(`Uploading file resource: ${file.originalname}`);
 
@@ -259,26 +256,23 @@ export class ResourceService {
    */
   static async getResourceStats() {
     try {
-      const [
-        totalResources,
-        resourcesByType,
-        requiredResources,
-        recentUploads,
-      ] = await Promise.all([
-        prisma.taskResource.count(),
-        prisma.taskResource.groupBy({
-          by: ['type'],
-          _count: { type: true },
-        }),
-        prisma.taskResource.count({ where: { isRequired: true } }),
-        prisma.taskResource.count({
-          where: {
-            createdAt: {
-              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+      const [totalResources, resourcesByType, requiredResources, recentUploads] = await Promise.all(
+        [
+          prisma.taskResource.count(),
+          prisma.taskResource.groupBy({
+            by: ['type'],
+            _count: { type: true },
+          }),
+          prisma.taskResource.count({ where: { isRequired: true } }),
+          prisma.taskResource.count({
+            where: {
+              createdAt: {
+                gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+              },
             },
-          },
-        }),
-      ]);
+          }),
+        ]
+      );
 
       return {
         totalResources,

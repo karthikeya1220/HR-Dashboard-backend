@@ -103,9 +103,9 @@ router.patch(
   '/tasks/:taskId',
   verifyToken,
   requireAdmin,
-  validateRequest({ 
+  validateRequest({
     params: getGlobalTaskByIdSchema,
-    body: updateGlobalTaskSchema 
+    body: updateGlobalTaskSchema,
   }),
   OnboardingController.updateGlobalTask
 );
@@ -144,11 +144,7 @@ router.delete(
  *       200:
  *         description: Workflow templates retrieved successfully
  */
-router.get(
-  '/workflow-templates',
-  verifyToken,
-  OnboardingController.getWorkflowTemplates
-);
+router.get('/workflow-templates', verifyToken, OnboardingController.getWorkflowTemplates);
 
 /**
  * @swagger
@@ -204,12 +200,7 @@ router.get(
  *       200:
  *         description: Workflow statistics retrieved successfully
  */
-router.get(
-  '/workflows/stats',
-  verifyToken,
-  requireAdmin,
-  OnboardingController.getWorkflowStats
-);
+router.get('/workflows/stats', verifyToken, requireAdmin, OnboardingController.getWorkflowStats);
 
 /**
  * @swagger
@@ -305,9 +296,9 @@ router.put(
   '/workflows/:workflowId',
   verifyToken,
   requireAdmin,
-  validateRequest({ 
+  validateRequest({
     params: getWorkflowByIdSchema,
-    body: updateWorkflowSchema 
+    body: updateWorkflowSchema,
   }),
   OnboardingController.updateWorkflow
 );
@@ -350,9 +341,9 @@ router.post(
   '/workflows/:workflowId/tasks',
   verifyToken,
   requireAdmin,
-  validateRequest({ 
+  validateRequest({
     params: getWorkflowByIdSchema,
-    body: assignTaskToWorkflowSchema 
+    body: assignTaskToWorkflowSchema,
   }),
   OnboardingController.assignTaskToWorkflow
 );
@@ -393,9 +384,9 @@ router.put(
   '/workflows/:workflowId/tasks/:taskId/order',
   verifyToken,
   requireAdmin,
-  validateRequest({ 
+  validateRequest({
     params: getWorkflowTaskByIdSchema,
-    body: updateTaskOrderSchema 
+    body: updateTaskOrderSchema,
   }),
   OnboardingController.updateTaskOrder
 );
@@ -416,9 +407,9 @@ router.post(
   '/workflows/:workflowId/tasks/:taskId/dependencies',
   verifyToken,
   requireAdmin,
-  validateRequest({ 
+  validateRequest({
     params: getWorkflowTaskByIdSchema,
-    body: addTaskDependencySchema 
+    body: addTaskDependencySchema,
   }),
   OnboardingController.addTaskDependency
 );
@@ -476,11 +467,7 @@ router.get(
  *       200:
  *         description: Workflow instance retrieved successfully
  */
-router.get(
-  '/instances/:instanceId',
-  verifyToken,
-  OnboardingController.getWorkflowInstanceById
-);
+router.get('/instances/:instanceId', verifyToken, OnboardingController.getWorkflowInstanceById);
 
 /**
  * @swagger

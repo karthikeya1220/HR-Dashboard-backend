@@ -28,7 +28,8 @@ export class EmployeeService {
       logger.info(`Starting full employee creation for: ${data.emailAddress}`);
 
       // Step 1: Validate and prepare data
-      const fullName = `${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`.trim();
+      const fullName =
+        `${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`.trim();
       const password = data.password || this.generateTemporaryPassword();
 
       // Step 2: Create Supabase user
@@ -152,7 +153,7 @@ export class EmployeeService {
       }
 
       // Execute rollback actions
-      await Promise.all(rollbackActions.map(action => action()));
+      await Promise.all(rollbackActions.map((action) => action()));
 
       throw error;
     }
@@ -217,7 +218,9 @@ export class EmployeeService {
 
       // Validate that the Supabase user exists
       if (supabaseAdmin) {
-        const { data: supabaseUser, error } = await supabaseAdmin.auth.admin.getUserById(data.supabaseId);
+        const { data: supabaseUser, error } = await supabaseAdmin.auth.admin.getUserById(
+          data.supabaseId
+        );
         if (error || !supabaseUser.user) {
           throw new Error(`Supabase user with ID ${data.supabaseId} not found`);
         }
@@ -458,23 +461,19 @@ export class EmployeeService {
    */
   static async getEmployeeStats() {
     try {
-      const [
-        totalEmployees,
-        activeEmployees,
-        departmentStats,
-        employmentTypeStats,
-      ] = await Promise.all([
-        prisma.employee.count(),
-        prisma.employee.count({ where: { isActive: true } }),
-        prisma.employee.groupBy({
-          by: ['department'],
-          _count: { department: true },
-        }),
-        prisma.employee.groupBy({
-          by: ['employmentType'],
-          _count: { employmentType: true },
-        }),
-      ]);
+      const [totalEmployees, activeEmployees, departmentStats, employmentTypeStats] =
+        await Promise.all([
+          prisma.employee.count(),
+          prisma.employee.count({ where: { isActive: true } }),
+          prisma.employee.groupBy({
+            by: ['department'],
+            _count: { department: true },
+          }),
+          prisma.employee.groupBy({
+            by: ['employmentType'],
+            _count: { employmentType: true },
+          }),
+        ]);
 
       return {
         totalEmployees,
