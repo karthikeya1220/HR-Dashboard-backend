@@ -455,7 +455,19 @@ const swaggerDefinition: SwaggerDefinition = {
 
 const options = {
   definition: swaggerDefinition,
-  apis: ['./src/modules/*/route.ts', './src/app.ts', './dist/modules/*/route.js', './dist/app.js'], // Path to the API files for both development (.ts) and production (.js)
+  apis: [
+    // Development files (.ts)
+    './src/modules/*/route.ts',
+    './src/app.ts',
+    // Production files (.js) - explicitly list each module
+    './dist/modules/user/route.js',
+    './dist/modules/auth/route.js',
+    './dist/modules/employee/route.js',
+    './dist/modules/onboarding/route.js',
+    './dist/modules/notifications/route.js',
+    './dist/modules/analytics/route.js',
+    './dist/app.js',
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
