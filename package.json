@@ -1,9 +1,15 @@
-
 {
   "name": "dashboard-backend",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/server.js",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "prisma": {
+    "binaryTargets": ["native", "linux-musl", "linux-musl-openssl-3.0.x"]
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
@@ -15,6 +21,8 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset",
+    "postinstall": "prisma generate",
     "prepare": "command -v husky >/dev/null 2>&1 && husky install || true"
   },
   "keywords": [

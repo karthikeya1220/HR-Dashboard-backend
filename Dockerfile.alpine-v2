@@ -1,12 +1,14 @@
+# Alternative Alpine-based Dockerfile with better OpenSSL support
+# Use this if you prefer Alpine over Debian
 
-# Use Node.js 20 LTS with Debian (better Prisma compatibility)
-FROM node:20-slim AS base
+# Use Node.js 20 LTS with Alpine
+FROM node:20-alpine AS base
 
-# Install system dependencies for Prisma
-RUN apt-get update && apt-get install -y \
+# Install comprehensive OpenSSL support for Prisma
+RUN apk add --no-cache \
     openssl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    openssl-dev \
+    libc6-compat
 
 # Set working directory
 WORKDIR /app
@@ -30,17 +32,18 @@ RUN npm run build
 RUN npm ci --only=production && npm cache clean --force
 
 # Production stage
-FROM node:20-slim AS production
+FROM node:20-alpine AS production
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    openssl \
-    ca-certificates \
+# Install runtime dependencies with comprehensive OpenSSL support
+RUN apk add --no-cache \
     dumb-init \
-    && rm -rf /var/lib/apt/lists/*
+    openssl \
+    openssl-dev \
+    libc6-compat
 
-# Create app user (Debian syntax)
-RUN groupadd -r nodejs && useradd -r -g nodejs -u 1001 nextjs
+# Create app user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
 
 # Set working directory
 WORKDIR /app
