@@ -11,14 +11,18 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy package files and Prisma schema first for better layer caching
 COPY package*.json ./
+COPY prisma ./prisma
 
 # Install all dependencies (including dev dependencies for building)
 RUN npm ci && npm cache clean --force
 
-# Copy source code
+# Copy rest of source code
 COPY . .
+
+# Remove prisma directory since it was copied twice (optimization)
+# The second copy from COPY . . will overwrite anyway
 
 # Generate Prisma client
 RUN npx prisma generate
