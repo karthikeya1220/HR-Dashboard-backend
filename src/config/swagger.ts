@@ -22,8 +22,8 @@ const swaggerDefinition: SwaggerDefinition = {
       description: 'Development server',
     },
     {
-      url: 'https://api.dashboard.com',
-      description: 'Production server',
+      url: 'https://dashboard-backend-oqeu.onrender.com',
+      description: 'Production server (Render)',
     },
   ],
   components: {
@@ -410,12 +410,52 @@ const swaggerDefinition: SwaggerDefinition = {
       name: 'Authentication',
       description: 'Authentication and authorization endpoints',
     },
+    {
+      name: 'Analytics',
+      description: 'Analytics and dashboard endpoints',
+    },
+    {
+      name: 'Employees',
+      description: 'Employee management endpoints',
+    },
+    {
+      name: 'Employees (Legacy)',
+      description: 'Legacy employee endpoints',
+    },
+    {
+      name: 'Notifications',
+      description: 'Notification management endpoints',
+    },
+    {
+      name: 'Global Tasks',
+      description: 'Global task management endpoints',
+    },
+    {
+      name: 'Workflow Templates',
+      description: 'Workflow template management endpoints',
+    },
+    {
+      name: 'Workflows',
+      description: 'Workflow management endpoints',
+    },
+    {
+      name: 'Workflow Tasks',
+      description: 'Workflow task management endpoints',
+    },
+    {
+      name: 'Workflow Instances',
+      description: 'Workflow instance management endpoints',
+    },
+    {
+      name: 'Dashboards',
+      description: 'Dashboard endpoints for employees and managers',
+    },
   ],
 };
 
 const options = {
   definition: swaggerDefinition,
-  apis: ['./src/modules/*/route.ts', './src/app.ts'], // Path to the API files
+  apis: ['./src/modules/*/route.ts', './src/app.ts', './dist/modules/*/route.js', './dist/app.js'], // Path to the API files for both development (.ts) and production (.js)
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
