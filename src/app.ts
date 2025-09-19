@@ -5,18 +5,18 @@ import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import swaggerUi from 'swagger-ui-express';
-import { logger } from './utils/logger';
-import { errorHandler } from './middlewares/errorHandler';
-import { requestLogger } from './middlewares/requestLogger';
-import { swaggerSpec } from './config/swagger';
+import { logger } from './utils/logger.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+import { requestLogger } from './middlewares/requestLogger.js';
+import { swaggerSpec } from './config/swagger.js';
 
 // Import module routes
-import userRoutes from './modules/user/route';
-import authRoutes from './modules/auth/route';
-import employeeRoutes from './modules/employee/route';
-import onboardingRoutes from './modules/onboarding/route';
-import notificationRoutes from './modules/notifications/route';
-import analyticsRoutes from './modules/analytics/route';
+import userRoutes from './modules/user/route.js';
+import authRoutes from './modules/auth/route.js';
+import employeeRoutes from './modules/employee/route.js';
+import onboardingRoutes from './modules/onboarding/route.js';
+import notificationRoutes from './modules/notifications/route.js';
+import analyticsRoutes from './modules/analytics/route.js';
 const app = express();
 
 // Trust proxy for accurate IP addresses

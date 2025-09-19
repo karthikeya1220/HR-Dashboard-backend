@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { AuthService } from './service';
-import { ResponseUtil } from '../../utils/response';
-import { asyncHandler } from '../../utils/asyncHandler';
-import { AuthenticatedRequest } from '../../middlewares/supabaseAuth';
+import { AuthService } from './service.js';
+import { ResponseUtil } from '../../utils/response.js';
+import { asyncHandler } from '../../utils/asyncHandler.js';
+import { AuthenticatedRequest } from '../../middlewares/supabaseAuth.js';
 
 export class AuthController {
   static register = asyncHandler(async (req: Request, res: Response) => {

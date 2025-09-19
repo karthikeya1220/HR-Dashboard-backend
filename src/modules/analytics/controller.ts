@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { AnalyticsService } from '../../services/analyticsService';
-import { logger } from '../../utils/logger';
-import { AuthenticatedRequest } from '../../middlewares/supabaseAuth';
+import { AnalyticsService } from '../../services/analyticsService.js';
+import { logger } from '../../utils/logger.js';
+import { AuthenticatedRequest } from '../../middlewares/supabaseAuth.js';
 
 export class AnalyticsController {
   /**

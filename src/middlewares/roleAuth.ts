@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from './supabaseAuth';
-import { logger } from '../utils/logger';
+import { AuthenticatedRequest } from './supabaseAuth.js';
+import { logger } from '../utils/logger.js';
 
 // Role hierarchy: ADMIN > MANAGER > EMPLOYEE
 const ROLE_HIERARCHY = {

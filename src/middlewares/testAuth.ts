@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { logger } from '../utils/logger';
-import { AuthenticatedRequest } from './supabaseAuth';
+import { logger } from '../utils/logger.js';
+import { AuthenticatedRequest } from './supabaseAuth.js';
 
 const JWT_SECRET =
   process.env.JWT_SECRET || 'your-super-secret-jwt-key-that-should-be-at-least-32-characters-long';

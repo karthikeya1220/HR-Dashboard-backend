@@ -1,7 +1,7 @@
 import { User, Prisma } from '@prisma/client';
-import { prisma } from '../../config/database';
-import { CreateUserInput, UpdateUserInput, GetUsersQueryInput } from './schema';
-import { CustomError } from '../../middlewares/errorHandler';
+import { prisma } from '../../config/database.js';
+import { CreateUserInput, UpdateUserInput, GetUsersQueryInput } from './schema.js';
+import { CustomError } from '../../middlewares/errorHandler.js';
 
 export class UserService {
   static async createUser(data: CreateUserInput): Promise<User> {

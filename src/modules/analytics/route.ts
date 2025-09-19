@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { AnalyticsController } from './controller';
-import { verifyToken } from '../../middlewares/testAuth';
-import { requireAdmin } from '../../middlewares/roleAuth';
+import { AnalyticsController } from './controller.js';
+import { verifyToken } from '../../middlewares/testAuth.js';
+import { requireAdmin } from '../../middlewares/roleAuth.js';
 
 const router = Router();
 

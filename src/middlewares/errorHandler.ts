@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
-import { logger } from '../utils/logger';
-import { ResponseUtil } from '../utils/response';
+import { logger } from '../utils/logger.js';
+import { ResponseUtil } from '../utils/response.js';
 
 export interface AppError extends Error {
   statusCode?: number;

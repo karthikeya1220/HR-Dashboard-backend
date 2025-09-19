@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { logger } from '../../utils/logger';
+import { logger } from '../../utils/logger.js';
 import {
   CreateGlobalTaskInput,
   UpdateGlobalTaskInput,
@@ -16,7 +16,7 @@ import {
   CreateWorkflowInstanceInput,
   UpdateWorkflowInstanceInput,
   GetWorkflowInstancesQueryInput,
-} from './schema';
+} from './schema.js';
 
 const prisma = new PrismaClient();
 

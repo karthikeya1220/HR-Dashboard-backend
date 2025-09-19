@@ -1,13 +1,13 @@
 import { Router } from 'express';
-import { UserController } from './controller';
-import { validateRequest } from '../../middlewares/validation';
-import { verifyToken } from '../../middlewares/testAuth';
+import { UserController } from './controller.js';
+import { validateRequest } from '../../middlewares/validation.js';
+import { verifyToken } from '../../middlewares/testAuth.js';
 import {
   createUserSchema,
   updateUserSchema,
   getUserByIdSchema,
   getUsersQuerySchema,
-} from './schema';
+} from './schema.js';
 
 const router = Router();
 

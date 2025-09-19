@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { EmployeeService } from './service';
-import { logger } from '../../utils/logger';
-import { AuthenticatedRequest } from '../../middlewares/supabaseAuth';
+import { EmployeeService } from './service.js';
+import { logger } from '../../utils/logger.js';
+import { AuthenticatedRequest } from '../../middlewares/supabaseAuth.js';
 import {
   CreateSupabaseUserInput,
   CreateFullEmployeeInput,
@@ -9,7 +9,7 @@ import {
   UpdateEmployeeInput,
   GetEmployeeByIdInput,
   GetEmployeesQueryInput,
-} from './schema';
+} from './schema.js';
 
 export class EmployeeController {
   /**

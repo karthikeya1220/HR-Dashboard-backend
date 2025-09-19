@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { logger } from '../utils/logger';
+import { logger } from '../utils/logger.js';
 import path from 'path';
 import fs from 'fs/promises';
 

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { supabase, isSupabaseEnabled } from '../config/supabase';
-import { logger } from '../utils/logger';
+import { supabase, isSupabaseEnabled } from '../config/supabase.js';
+import { logger } from '../utils/logger.js';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

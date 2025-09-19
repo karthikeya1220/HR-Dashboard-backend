@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { NotificationService } from '../../services/notificationService';
-import { logger } from '../../utils/logger';
-import { AuthenticatedRequest } from '../../middlewares/supabaseAuth';
+import { NotificationService } from '../../services/notificationService.js';
+import { logger } from '../../utils/logger.js';
+import { AuthenticatedRequest } from '../../middlewares/supabaseAuth.js';
 
 export class NotificationController {
   /**

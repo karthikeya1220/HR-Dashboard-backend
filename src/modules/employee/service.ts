@@ -1,15 +1,15 @@
 import { PrismaClient } from '@prisma/client';
-import { supabaseAdmin } from '../../config/supabase';
-import { logger } from '../../utils/logger';
-import { RoleAssignmentService } from '../../services/roleAssignmentService';
-import { NotificationService } from '../../services/notificationService';
+import { supabaseAdmin } from '../../config/supabase.js';
+import { logger } from '../../utils/logger.js';
+import { RoleAssignmentService } from '../../services/roleAssignmentService.js';
+import { NotificationService } from '../../services/notificationService.js';
 import {
   CreateSupabaseUserInput,
   CreateFullEmployeeInput,
   CreateEmployeeInput,
   UpdateEmployeeInput,
   GetEmployeesQueryInput,
-} from './schema';
+} from './schema.js';
 
 const prisma = new PrismaClient();
 

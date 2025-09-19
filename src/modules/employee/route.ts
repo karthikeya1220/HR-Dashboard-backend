@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { EmployeeController } from './controller';
-import { validateRequest } from '../../middlewares/validation';
-import { verifyToken } from '../../middlewares/testAuth';
-import { requireAdmin, requireEmployee } from '../../middlewares/roleAuth';
+import { EmployeeController } from './controller.js';
+import { validateRequest } from '../../middlewares/validation.js';
+import { verifyToken } from '../../middlewares/testAuth.js';
+import { requireAdmin, requireEmployee } from '../../middlewares/roleAuth.js';
 import {
   createSupabaseUserSchema,
   createFullEmployeeSchema,
@@ -10,7 +10,7 @@ import {
   updateEmployeeSchema,
   getEmployeeByIdSchema,
   getEmployeesQuerySchema,
-} from './schema';
+} from './schema.js';
 
 const router = Router();
 

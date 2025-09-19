@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
-import app from './app';
-import { logger } from './utils/logger';
+import app from './app.js';
+import { logger } from './utils/logger.js';
 
 // Load environment variables
 dotenv.config();

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { OnboardingService } from './service';
-import { logger } from '../../utils/logger';
-import { AuthenticatedRequest } from '../../middlewares/supabaseAuth';
+import { OnboardingService } from './service.js';
+import { logger } from '../../utils/logger.js';
+import { AuthenticatedRequest } from '../../middlewares/supabaseAuth.js';
 import {
   CreateGlobalTaskInput,
   UpdateGlobalTaskInput,
@@ -22,7 +22,7 @@ import {
   CreateWorkflowInstanceInput,
   UpdateWorkflowInstanceInput,
   GetWorkflowInstancesQueryInput,
-} from './schema';
+} from './schema.js';
 
 export class OnboardingController {
   // ==================== GLOBAL TASK MANAGEMENT ====================

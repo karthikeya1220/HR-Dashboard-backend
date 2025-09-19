@@ -1,9 +1,9 @@
 import { User } from '@prisma/client';
-import { prisma } from '../../config/database';
-import { supabase, supabaseAdmin, isSupabaseEnabled } from '../../config/supabase';
-import { LoginInput, RegisterInput } from './schema';
-import { CustomError } from '../../middlewares/errorHandler';
-import { logger } from '../../utils/logger';
+import { prisma } from '../../config/database.js';
+import { supabase, supabaseAdmin, isSupabaseEnabled } from '../../config/supabase.js';
+import { LoginInput, RegisterInput } from './schema.js';
+import { CustomError } from '../../middlewares/errorHandler.js';
+import { logger } from '../../utils/logger.js';
 
 export class AuthService {
   static async register(data: RegisterInput): Promise<{ user: any; session?: any }> {

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { UserService } from './service';
-import { ResponseUtil } from '../../utils/response';
-import { asyncHandler } from '../../utils/asyncHandler';
+import { UserService } from './service.js';
+import { ResponseUtil } from '../../utils/response.js';
+import { asyncHandler } from '../../utils/asyncHandler.js';
 
 export class UserController {
   static createUser = asyncHandler(async (req: Request, res: Response) => {

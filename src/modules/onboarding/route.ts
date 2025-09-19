@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { OnboardingController } from './controller';
-import { validateRequest } from '../../middlewares/validation';
-import { verifyToken } from '../../middlewares/testAuth';
-import { requireAdmin } from '../../middlewares/roleAuth';
+import { OnboardingController } from './controller.js';
+import { validateRequest } from '../../middlewares/validation.js';
+import { verifyToken } from '../../middlewares/testAuth.js';
+import { requireAdmin } from '../../middlewares/roleAuth.js';
 import {
   createGlobalTaskSchema,
   updateGlobalTaskSchema,
@@ -23,7 +23,7 @@ import {
   createWorkflowInstanceSchema,
   updateWorkflowInstanceSchema,
   getWorkflowInstancesQuerySchema,
-} from './schema';
+} from './schema.js';
 
 const router = Router();
 

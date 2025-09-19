@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import { logger } from '../utils/logger';
-import { supabase } from '../config/supabase';
+import { logger } from '../utils/logger.js';
+import { supabase } from '../config/supabase.js';
 
 const prisma = new PrismaClient();
 
