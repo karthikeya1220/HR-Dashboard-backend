@@ -114,3 +114,22 @@ build/
 
 # Prisma
 prisma/migrations/
+
+
+# documentation
+docs/api/
+*.md
+!README.md
+!CONTRIBUTING.md
+!
+
+
+#sripts
+scripts/
+*.sh
+# !scripts/test-complete-onboarding-workflow.sh
+
+/test/
+
+
+*.sh

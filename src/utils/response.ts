@@ -65,3 +65,36 @@ export class ResponseUtil {
     return this.error(res, message, error, 500);
   }
 }
+
+// Custom error class
+export class AppError extends Error {
+  statusCode: number;
+  isOperational: boolean;
+
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.statusCode = statusCode;
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+
+// Helper functions for consistent response format
+export const successResponse = <T>(
+  res: Response,
+  data?: T,
+  message: string = 'Success',
+  statusCode: number = 200
+): Response<ApiResponse<T>> => {
+  return ResponseUtil.success(res, message, data, statusCode);
+};
+
+export const errorResponse = (
+  res: Response,
+  message: string,
+  statusCode: number = 400,
+  error?: string
+): Response<ApiResponse> => {
+  return ResponseUtil.error(res, message, error, statusCode);
+};

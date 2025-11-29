@@ -1,0 +1,280 @@
+{
+  "policyVersion": "1.0",
+  "policyName": "Organizational Leave & Holiday Policy",
+  "lastUpdated": "2025-01-01",
+
+  "company": {
+    "locations": ["Hyderabad", "Tirupati"],
+    "workWeek": "Monday-Friday",
+    "attendanceHours": {
+      "fullDayHours": 8,
+      "halfDayHours": 4
+    },
+    "probationRestrictions": false,
+    "negativeLeaveAllowed": true,
+    "maxNegativeLeave": -3
+  },
+
+  "holidayCalendarSettings": {
+    "updatedBy": "HR",
+    "updateFrequency": "yearly",
+    "mustPublishBefore": "January 1",
+    "yearlyOverride": true,
+    "dataSources": [
+      "Indian National Holiday Calendar",
+      "Telangana Govt Holiday Calendar",
+      "Andhra Pradesh Govt Holiday Calendar",
+      "Company Optional Holiday List"
+    ]
+  },
+
+  "holidayCalendar2025": {
+    "fixedHolidays": [
+      {"date": "2025-01-14", "name": "Makar Sankranti / Pongal"},
+      {"date": "2025-01-26", "name": "Republic Day", "dayOfWeek": "Sunday"},
+      {"date": "2025-02-26", "name": "Maha Shivaratri"},
+      {"date": "2025-03-14", "name": "Holi"},
+      {"date": "2025-03-31", "name": "Eid-ul-Fitr"},
+      {"date": "2025-04-18", "name": "Good Friday"},
+      {"date": "2025-05-01", "name": "May Day"},
+      {"date": "2025-06-27", "name": "Muharram"},
+      {"date": "2025-08-15", "name": "Independence Day"},
+      {"date": "2025-08-27", "name": "Ganesh Chaturthi"},
+      {"date": "2025-09-22", "name": "Bathukamma"},
+      {"date": "2025-10-02", "name": "Gandhi Jayanti"},
+      {"date": "2025-10-20", "name": "Diwali"},
+      {"date": "2025-12-25", "name": "Christmas"}
+    ],
+    
+    "regionalHolidays": {
+      "Hyderabad": [
+        {
+          "type": "optional",
+          "date": "2025-07-21",
+          "name": "Bonalu",
+          "region": "Telangana"
+        }
+      ],
+      "Tirupati": [
+        {
+          "type": "flex",
+          "month": "July",
+          "allowedDays": 1,
+          "name": "AP Regional Flex Holiday"
+        }
+      ]
+    },
+
+    "optionalHolidaysGeneral": [
+      {
+        "name": "Cultural Optional Holiday",
+        "allowedDays": 1,
+        "region": "All"
+      }
+    ]
+  },
+
+  "leaveTypes": {
+    "CasualLeave": {
+      "code": "CL",
+      "name": "Casual Leave",
+      "quota": 6,
+      "creditType": "yearly",
+      "carryForward": false,
+      "encashable": false,
+      "halfDayAllowed": true,
+      "allowNegative": true,
+      "maxNegativeAllowed": -3,
+      "approvalFlow": ["Manager", "HR"],
+      "documentationRules": {
+        "requiresDocument": false
+      }
+    },
+
+    "SickLeave": {
+      "code": "SL",
+      "name": "Sick Leave",
+      "quota": 6,
+      "creditType": "yearly",
+      "carryForward": true,
+      "maxCarryForward": 6,
+      "encashable": false,
+      "halfDayAllowed": true,
+      "allowNegative": true,
+      "approvalFlowRules": {
+        "oneDay": "auto",
+        "moreThanOneDay": ["Manager", "HR"]
+      },
+      "documentationRules": {
+        "requiredIfDaysMoreThan": 2,
+        "documentType": "Medical Certificate"
+      }
+    },
+
+    "EarnedLeave": {
+      "code": "EL",
+      "name": "Earned Leave",
+      "quota": 12,
+      "creditType": "monthly",
+      "accrualRate": 1,
+      "carryForward": true,
+      "maxCarryForward": 18,
+      "encashable": true,
+      "encashLimitPerYear": 6,
+      "encashCalculationBasis": "basic_salary",
+      "halfDayAllowed": false,
+      "approvalFlow": ["Manager", "HR"],
+      "noticePeriodDays": 7
+    },
+
+    "OptionalHoliday": {
+      "code": "OH",
+      "name": "Optional Holiday",
+      "quota": 1,
+      "creditType": "yearly",
+      "carryForward": false,
+      "autoApproval": true
+    },
+
+    "RegionalFlexHoliday": {
+      "code": "RFH",
+      "name": "Regional Flex Holiday",
+      "applicableTo": ["Tirupati"],
+      "month": "July",
+      "quota": 1,
+      "carryForward": false,
+      "approvalFlow": ["Manager", "HR"]
+    },
+
+    "BonaluHoliday": {
+      "code": "BONALU",
+      "name": "Bonalu Optional Holiday",
+      "applicableTo": ["Hyderabad"],
+      "quota": 1,
+      "carryForward": false,
+      "autoApproval": true
+    },
+
+    "CompOff": {
+      "code": "CO",
+      "name": "Compensatory Off",
+      "creditType": "earned",
+      "expiryDays": 90,
+      "carryForward": false,
+      "halfDayAllowed": true,
+      "requiresPreApproval": true,
+      "approvalFlow": ["Manager", "HR"]
+    },
+
+    "MaternityLeave": {
+      "code": "MAT",
+      "name": "Maternity Leave",
+      "durationWeeks": 26,
+      "approvalFlow": ["HR"],
+      "documentation": "Doctor Certificate"
+    },
+
+    "PaternityLeave": {
+      "code": "PAT",
+      "name": "Paternity Leave",
+      "quota": 5,
+      "usageWindowDays": 30,
+      "approvalFlow": ["Manager", "HR"]
+    },
+
+    "BereavementLeave": {
+      "code": "BRV",
+      "name": "Bereavement Leave",
+      "quota": 5,
+      "approvalFlow": ["HR"],
+      "eligibleFamilyMembers": [
+        "Father",
+        "Mother",
+        "Spouse",
+        "Child",
+        "Sibling",
+        "Grandparent"
+      ]
+    },
+
+    "LeaveWithoutPay": {
+      "code": "LWP",
+      "name": "Leave Without Pay",
+      "approvalFlow": ["Manager", "HR"],
+      "salaryDeduction": true
+    },
+
+    "WorkFromHome": {
+      "code": "WFH",
+      "name": "Work From Home",
+      "type": "attendance_override",
+      "monthlyLimit": 4,
+      "approvalFlow": ["Manager"],
+      "attendanceStatus": "Present WFH"
+    }
+  },
+
+  "attendanceRules": {
+    "autoAbsentIfNoCheckIn": true,
+    "autoLWPIfNoLeaveApplied": true,
+    "gracePeriodHours": 48,
+    "convertLWPtoLeaveIfAppliedWithinGrace": true,
+    
+    "lateMarks": {
+      "allowedLatePerMonth": 3,
+      "lateToDeductionRule": {
+        "lateCount": 2,
+        "deduct": "0.5 CL"
+      }
+    },
+
+    "halfDayRules": {
+      "lessThanHalfDayHours": 4,
+      "moreThanFullDayHours": 8
+    },
+
+    "wfhRules": {
+      "countsAsPresent": true,
+      "approvalRequired": true
+    }
+  },
+
+  "leaveApprovalLogic": {
+    "CL": ["Manager", "HR"],
+    "SL_1_day": "auto",
+    "SL_more_than_1_day": ["Manager", "HR"],
+    "EL": ["Manager", "HR"],
+    "OH": "auto",
+    "BONALU": "auto",
+    "RFH": ["Manager", "HR"],
+    "CO": ["Manager", "HR"],
+    "MAT": ["HR"],
+    "PAT": ["Manager", "HR"],
+    "BRV": ["HR"],
+    "LWP": ["Manager", "HR"],
+    "WFH": ["Manager"]
+  },
+
+  "yearlyResetRules": {
+    "resetDate": "January 1",
+    "carryForwardLimits": {
+      "SL": 6,
+      "EL": 18
+    },
+    "noCarryForwardLeaves": [
+      "CL",
+      "OH",
+      "BONALU",
+      "RFH",
+      "CO"
+    ]
+  },
+
+  "hrOverridePermissions": {
+    "canEditLeaveBalance": true,
+    "canModifyHolidayCalendar": true,
+    "canForceApprove": true,
+    "canAdjustAttendance": true,
+    "canAddSpecialLeaves": true
+  }
+}

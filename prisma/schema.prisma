@@ -119,6 +119,11 @@ model Employee {
   @@index([employmentType])
   // Relations
   workflowInstances           WorkflowInstance[]
+  
+  // Leave Management Relations
+  leaveRequests               LeaveRequest[]
+  leaveBalances               LeaveBalance[]
+  
   @@index([isActive])
   @@map("employees")
 }
@@ -598,3 +603,418 @@ model TaskAnalytics {
   @@index([reportDate])
   @@map("task_analytics")
 }
+
+// Leave Management Enums
+enum LeaveType {
+  CASUAL
+  SICK
+  EARNED
+  OPTIONAL_HOLIDAY
+  REGIONAL_FLEX_HOLIDAY
+  BONALU_HOLIDAY
+  COMP_OFF
+  MATERNITY
+  PATERNITY
+  BEREAVEMENT
+  LEAVE_WITHOUT_PAY
+  WORK_FROM_HOME
+}
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+  WITHDRAWN
+}
+
+enum LeaveApprovalLevel {
+  AUTO
+  MANAGER
+  HR
+  BOTH
+}
+
+enum LeaveCreditType {
+  YEARLY
+  MONTHLY
+  EARNED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  WORK_FROM_HOME
+  LATE
+}
+
+// Leave Management Models
+
+// Leave Policy Configuration
+model LeavePolicy {
+  id                    String              @id @default(uuid())
+  
+  // Policy Details
+  code                  String              @unique // CL, SL, EL, etc.
+  name                  String
+  leaveType             LeaveType
+  description           String?
+  
+  // Quota and Credits
+  quota                 Int?                // Yearly/monthly quota
+  creditType            LeaveCreditType     @default(YEARLY)
+  accrualRate           Decimal?            @db.Decimal(10,2) // For monthly accrual
+  
+  // Carry Forward Rules
+  carryForward          Boolean             @default(false)
+  maxCarryForward       Int?                // Max days to carry forward
+  carryForwardExpiry    Int?                // Days after which carried forward leave expires
+  
+  // Usage Rules
+  encashable            Boolean             @default(false)
+  encashLimitPerYear    Int?
+  halfDayAllowed        Boolean             @default(true)
+  allowNegative         Boolean             @default(false)
+  maxNegativeAllowed    Int?                // Negative balance limit
+  
+  // Approval Workflow
+  approvalLevel         LeaveApprovalLevel  @default(MANAGER)
+  autoApprovalEnabled   Boolean             @default(false)
+  autoApprovalConditions Json?              // Conditions for auto approval
+  
+  // Notice and Documentation
+  noticePeriodDays      Int                 @default(0)
+  documentationRequired Boolean             @default(false)
+  documentationRules    Json?               // Rules for when documentation is required
+  
+  // Applicability
+  applicableLocations   String[]            // Empty = all locations
+  applicableDepartments String[]            // Empty = all departments
+  applicableRoles       String[]            // Empty = all roles
+  
+  // Special Rules
+  usageWindowDays       Int?                // Window to use the leave (for paternity, etc.)
+  expiryDays           Int?                // Leave expires after X days (for comp off)
+  salaryDeduction      Boolean             @default(false)
+  
+  // Metadata
+  isActive              Boolean             @default(true)
+  version               Int                 @default(1)
+  effectiveFrom         DateTime            @default(now())
+  effectiveUntil        DateTime?
+  createdBy             String
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  // Relations
+  leaveRequests         LeaveRequest[]
+  leaveBalances         LeaveBalance[]
+  
+  @@index([leaveType])
+  @@index([isActive])
+  @@index([effectiveFrom])
+  @@map("leave_policies")
+}
+
+// Employee Leave Balance
+model LeaveBalance {
+  id                    String              @id @default(uuid())
+  
+  // Employee & Policy
+  employeeId            String
+  employee              Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  policyId              String
+  policy                LeavePolicy         @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  
+  // Balance Tracking
+  fiscalYear            Int                 // e.g., 2025
+  totalEntitlement      Decimal             @db.Decimal(10,2)
+  usedLeaves            Decimal             @db.Decimal(10,2) @default(0)
+  pendingLeaves         Decimal             @db.Decimal(10,2) @default(0)
+  availableBalance      Decimal             @db.Decimal(10,2)
+  carriedForward        Decimal             @db.Decimal(10,2) @default(0)
+  
+  // Encashment Tracking
+  encashedThisYear      Decimal             @db.Decimal(10,2) @default(0)
+  
+  // Metadata
+  lastUpdated           DateTime            @default(now())
+  updatedBy             String?             // Who updated the balance
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@unique([employeeId, policyId, fiscalYear])
+  @@index([employeeId])
+  @@index([fiscalYear])
+  @@index([policyId])
+  @@map("leave_balances")
+}
+
+// Leave Request
+model LeaveRequest {
+  id                    String              @id @default(uuid())
+  
+  // Employee & Policy
+  employeeId            String
+  employee              Employee            @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  policyId              String
+  policy                LeavePolicy         @relation(fields: [policyId], references: [id], onDelete: Restrict)
+  
+  // Leave Details
+  leaveType             LeaveType
+  startDate             DateTime
+  endDate               DateTime
+  totalDays             Decimal             @db.Decimal(10,2)
+  isHalfDay             Boolean             @default(false)
+  halfDaySession        String?             // "FIRST_HALF" or "SECOND_HALF"
+  reason                String
+  
+  // Request Status
+  status                LeaveRequestStatus  @default(PENDING)
+  appliedAt             DateTime            @default(now())
+  
+  // Manager Approval
+  managerApprovedBy     String?
+  managerApprovedAt     DateTime?
+  managerComments       String?
+  managerApprovalStatus LeaveRequestStatus?
+  
+  // HR Approval
+  hrApprovedBy          String?
+  hrApprovedAt          DateTime?
+  hrComments            String?
+  hrApprovalStatus      LeaveRequestStatus?
+  
+  // Final Approval
+  finalApprovedBy       String?
+  finalApprovedAt       DateTime?
+  finalStatus           LeaveRequestStatus?
+  
+  // Rejection/Cancellation
+  rejectedBy            String?
+  rejectedAt            DateTime?
+  rejectionReason       String?
+  
+  cancelledBy           String?
+  cancelledAt           DateTime?
+  cancellationReason    String?
+  
+  // Additional Data
+  attachments           Json?               // Array of attachment URLs/metadata
+  emergencyContact      Json?               // Emergency contact during leave
+  workHandover          String?             // Work handover notes
+  
+  // Metadata
+  isBackdated           Boolean             @default(false)
+  notificationsSent     Boolean             @default(false)
+  balanceAdjusted       Boolean             @default(false)
+  ipAddress             String?
+  userAgent             String?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  // Relations
+  auditLogs             LeaveAuditLog[]
+  
+  @@index([employeeId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@index([leaveType])
+  @@index([appliedAt])
+  @@map("leave_requests")
+}
+
+// Leave Audit Trail
+model LeaveAuditLog {
+  id                    String              @id @default(uuid())
+  
+  // Request Reference
+  leaveRequestId        String
+  leaveRequest          LeaveRequest        @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  
+  // Action Details
+  action                String              // CREATED, UPDATED, APPROVED, REJECTED, CANCELLED, WITHDRAWN
+  performedBy           String              // User ID
+  performedByEmail      String
+  performedByRole       String
+  performedByName       String
+  
+  // Change Details
+  previousStatus        String?
+  newStatus             String?
+  fieldChanges          Json?               // Detailed field-level changes
+  comments              String?
+  reason                String?
+  
+  // Request Context
+  ipAddress             String?
+  userAgent             String?
+  requestHeaders        Json?               // Additional request metadata
+  
+  // Timestamp
+  timestamp             DateTime            @default(now())
+  
+  @@index([leaveRequestId])
+  @@index([performedBy])
+  @@index([action])
+  @@index([timestamp])
+  @@map("leave_audit_logs")
+}
+
+// Leave Analytics
+model LeaveAnalytics {
+  id                    String              @id @default(uuid())
+  
+  // Scope
+  department            String?             // null = organization-wide
+  location              String?             // null = all locations
+  fiscalYear            Int
+  month                 Int?                // null = yearly stats
+  
+  // Request Metrics
+  totalRequests         Int                 @default(0)
+  approvedRequests      Int                 @default(0)
+  rejectedRequests      Int                 @default(0)
+  pendingRequests       Int                 @default(0)
+  cancelledRequests     Int                 @default(0)
+  
+  // Leave Type Breakdown
+  leaveTypeBreakdown    Json                // { "CASUAL": 50, "SICK": 30, ... }
+  
+  // Usage Metrics
+  totalLeaveDays        Decimal             @db.Decimal(10,2)
+  averageLeaveDays      Decimal             @db.Decimal(10,2)
+  utilizationRate       Decimal             @db.Decimal(5,2) // Percentage
+  
+  // Approval Metrics
+  averageApprovalTime   Decimal?            @db.Decimal(10,2) // Hours
+  autoApprovalCount     Int                 @default(0)
+  managerApprovalCount  Int                 @default(0)
+  hrApprovalCount       Int                 @default(0)
+  
+  // Trends
+  comparisonPrevPeriod  Json?               // Growth/decline metrics
+  seasonalTrends        Json?               // Seasonal patterns
+  
+  // Timestamps
+  reportDate            DateTime            @default(now())
+  periodStart           DateTime
+  periodEnd             DateTime
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@unique([department, location, fiscalYear, month])
+  @@index([fiscalYear])
+  @@index([department])
+  @@index([location])
+  @@index([reportDate])
+  @@map("leave_analytics")
+}
+
+// Leave Settings and Configuration
+model LeaveSettings {
+  id                    String              @id @default(uuid())
+  
+  // System Configuration
+  fiscalYearStart       String              @default("01-04") // DD-MM format
+  weekendDays           String[]            @default(["SATURDAY", "SUNDAY"])
+  workingHoursPerDay    Decimal             @db.Decimal(4,2) @default(8.0)
+  halfDayHours          Decimal             @db.Decimal(4,2) @default(4.0)
+  
+  // Company Locations and Rules
+  companyLocations      String[]            @default([])
+  probationRestrictions Boolean             @default(false)
+  probationPeriodMonths Int                 @default(6)
+  negativeLeaveAllowed  Boolean             @default(false)
+  maxNegativeLeave      Int                 @default(0)
+  
+  // Approval and Workflow
+  autoApprovalEnabled   Boolean             @default(false)
+  autoApprovalRules     Json?               // Global auto approval conditions
+  escalationEnabled     Boolean             @default(false)
+  escalationAfterDays   Int                 @default(3)
+  escalationRecipients  String[]            // HR emails for escalation
+  
+  // Notification Settings
+  emailNotifications    Boolean             @default(true)
+  inAppNotifications    Boolean             @default(true)
+  smsNotifications      Boolean             @default(false)
+  reminderEnabled       Boolean             @default(true)
+  reminderBeforeDays    Int                 @default(7)
+  notificationTemplates Json?               // Email/SMS templates
+  
+  // Holiday and Calendar Settings
+  holidayCalendarEnabled Boolean            @default(true)
+  nationalHolidays      Json?               // List of national holidays
+  regionalHolidays      Json?               // Location-specific holidays
+  optionalHolidays      Json?               // Optional holidays
+  
+  // Attendance Integration
+  attendanceIntegration Boolean             @default(false)
+  autoAbsentIfNoCheckIn Boolean             @default(true)
+  autoLWPIfNoLeave      Boolean             @default(true)
+  gracePeriodHours      Int                 @default(48)
+  lateMarkRules         Json?               // Late mark deduction rules
+  
+  // Compliance and Security
+  require2FA            Boolean             @default(false)
+  auditLogRetention     Int                 @default(2555) // Days (7 years)
+  sessionTimeout        Int                 @default(30) // Minutes
+  maxBackdatedDays      Int                 @default(7)
+  
+  // HR Override Permissions
+  hrCanEditBalance      Boolean             @default(true)
+  hrCanForceApprove     Boolean             @default(true)
+  hrCanModifyCalendar   Boolean             @default(true)
+  hrCanAdjustAttendance Boolean             @default(true)
+  hrCanAddSpecialLeaves Boolean             @default(true)
+  
+  // Encashment Settings
+  encashmentEnabled     Boolean             @default(false)
+  encashmentPeriod      String?             // "YEARLY", "HALF_YEARLY", "QUARTERLY"
+  encashmentCalculation String?             // "BASIC_SALARY", "GROSS_SALARY"
+  maxEncashmentPercent  Decimal?            @db.Decimal(5,2) // Max percentage of available leave
+  
+  // Metadata
+  version               Int                 @default(1)
+  lastUpdatedBy         String
+  lastUpdatedAt         DateTime            @default(now())
+  createdBy             String
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@map("leave_settings")
+}
+
+// Holiday Calendar
+model Holiday {
+  id                    String              @id @default(uuid())
+  
+  // Holiday Details
+  name                  String
+  date                  DateTime
+  dayOfWeek             String
+  type                  String              // "FIXED", "OPTIONAL", "REGIONAL"
+  description           String?
+  
+  // Applicability
+  applicableLocations   String[]            // Empty = all locations
+  isNationalHoliday     Boolean             @default(false)
+  isOptional            Boolean             @default(false)
+  
+  // Configuration
+  fiscalYear            Int
+  isActive              Boolean             @default(true)
+  createdBy             String
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@index([date])
+  @@index([fiscalYear])
+  @@index([isActive])
+  @@index([type])
+  @@map("holidays")
+}
+

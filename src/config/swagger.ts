@@ -18,7 +18,7 @@ const swaggerDefinition: SwaggerDefinition = {
   },
   servers: [
     {
-      url: 'http://localhost:3004',
+      url: 'http://localhost:3005',
       description: 'Development server',
     },
     {
@@ -450,6 +450,11 @@ const swaggerDefinition: SwaggerDefinition = {
       name: 'Dashboards',
       description: 'Dashboard endpoints for employees and managers',
     },
+    {
+      name: 'Leave Management',
+      description:
+        'Leave management endpoints including policies, requests, balances, and approvals',
+    },
   ],
 };
 
@@ -466,6 +471,7 @@ const options = {
     './dist/modules/onboarding/route.js',
     './dist/modules/notifications/route.js',
     './dist/modules/analytics/route.js',
+    './dist/modules/leaves/route.js',
     './dist/app.js',
   ],
 };

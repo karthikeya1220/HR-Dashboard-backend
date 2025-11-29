@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+  
+# Install Prisma CLI
+RUN npm install -g prisma
 
 # Set working directory
 WORKDIR /app

@@ -17,6 +17,7 @@ import employeeRoutes from './modules/employee/route.js';
 import onboardingRoutes from './modules/onboarding/route.js';
 import notificationRoutes from './modules/notifications/route.js';
 import analyticsRoutes from './modules/analytics/route.js';
+import { leaveRoutes } from './modules/leaves/route.js';
 const app = express();
 
 // Trust proxy for accurate IP addresses
@@ -29,8 +30,10 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
         imgSrc: ["'self'", 'data:', 'https:'],
+        connectSrc: ["'self'", 'http://localhost:*', 'ws://localhost:*'],
+        fontSrc: ["'self'", 'data:'],
       },
     },
   })
@@ -164,6 +167,7 @@ app.use('/api/v1', employeeRoutes);
 app.use('/api/v1/onboarding', onboardingRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/leaves', leaveRoutes);
 // 404 handler
 app.use('*', (req, res) => {
   logger.warn(`404 - Route not found: ${req.method} ${req.originalUrl}`);
