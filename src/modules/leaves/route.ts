@@ -633,6 +633,499 @@ router.get(
  */
 router.get('/requests/:id', leaveController.getLeaveRequest);
 
+// ==================== ENHANCED REQUEST MANAGEMENT ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/leaves/requests/search:
+ *   post:
+ *     summary: Advanced search for leave requests
+ *     description: Search leave requests using advanced filters and presets
+ *     tags: [Leave Management]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               query:
+ *                 type: string
+ *                 description: Text search query
+ *               preset:
+ *                 type: string
+ *                 enum: [pending_approvals, my_requests, team_requests, overdue_approvals, emergency_requests, long_leaves, recent_requests]
+ *                 description: Predefined search preset
+ *               filters:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     field:
+ *                       type: string
+ *                     operator:
+ *                       type: string
+ *                       enum: [equals, contains, in, between, gt, lt, gte, lte]
+ *                     value:
+ *                       oneOf:
+ *                         - type: string
+ *                         - type: number
+ *                         - type: array
+ *     responses:
+ *       200:
+ *         description: Search completed successfully
+ */
+router.post(
+  '/requests/search',
+  requireExactRole(['EMPLOYEE', 'MANAGER', 'ADMIN']),
+  leaveController.searchLeaveRequests
+);
+
+/**
+ * @swagger
+ * /api/v1/leaves/requests/bulk:
+ *   post:
+ *     summary: Bulk operations on leave requests
+ *     description: Perform bulk approve/reject operations on multiple leave requests
+ *     tags: [Leave Management]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [requestIds, operation]
+ *             properties:
+ *               requestIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of leave request IDs
+ *               operation:
+ *                 type: string
+ *                 enum: [APPROVE, REJECT]
+ *                 description: Operation to perform
+ *               data:
+ *                 type: object
+ *                 properties:
+ *                   comments:
+ *                     type: string
+ *                     description: Comments for the operation
+ *     responses:
+ *       200:
+ *         description: Bulk operation completed successfully
+ *       403:
+ *         description: Insufficient permissions
+ */
+router.post(
+  '/requests/bulk',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  leaveController.bulkUpdateLeaveRequests
+);
+
+/**
+ * @swagger
+ * /api/v1/leaves/requests/export:
+ *   get:
+ *     summary: Export leave requests
+ *     description: Export leave requests to CSV or Excel format
+ *     tags: [Leave Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: format
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [csv, xlsx]
+ *           default: csv
+ *         description: Export format
+ *     responses:
+ *       200:
+ *         description: Export file generated successfully
+ *         content:
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       403:
+ *         description: Insufficient permissions
+ */
+router.get(
+  '/requests/export',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  validateRequest({ query: getLeaveRequestsQuerySchema }),
+  leaveController.exportLeaveRequests
+);
+
+// ==================== APPROVAL WORKFLOW MANAGEMENT ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/leaves/approval/queue:
+ *   get:
+ *     summary: Get approval queue
+ *     description: Retrieve pending leave requests requiring approval with enhanced workflow information
+ *     tags: [Leave Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: status
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [pending, overdue, all]
+ *           default: pending
+ *         description: Filter by approval status
+ *       - name: priority
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [all, emergency, long]
+ *           default: all
+ *         description: Filter by priority level
+ *       - name: department
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by department
+ *     responses:
+ *       200:
+ *         description: Approval queue retrieved successfully
+ *       403:
+ *         description: Insufficient permissions
+ */
+router.get(
+  '/approval/queue',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  leaveController.getApprovalQueue
+);
+
+/**
+ * @swagger
+ * /api/v1/leaves/approval/stats:
+ *   get:
+ *     summary: Get approval statistics
+ *     description: Retrieve comprehensive approval statistics and metrics
+ *     tags: [Leave Management]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - name: period
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [week, month, quarter, year]
+ *           default: month
+ *         description: Time period for statistics
+ *       - name: department
+ *         in: query
+ *         schema:
+ *           type: string
+ *         description: Filter by department
+ *     responses:
+ *       200:
+ *         description: Approval statistics retrieved successfully
+ *       403:
+ *         description: Insufficient permissions
+ */
+router.get(
+  '/approval/stats',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  leaveController.getApprovalStats
+);
+
+/**
+ * @swagger
+ * /api/v1/leaves/approval/delegation:
+ *   post:
+ *     summary: Set approval delegation
+ *     description: Delegate approval authority to another user temporarily
+ *     tags: [Leave Management]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [delegateToUserId, reason]
+ *             properties:
+ *               delegateToUserId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: User ID to delegate approval authority to
+ *               reason:
+ *                 type: string
+ *                 description: Reason for delegation
+ *               validUntil:
+ *                 type: string
+ *                 format: date-time
+ *                 description: "When delegation expires (default: 30 days)"
+ *               delegationType:
+ *                 type: string
+ *                 enum: [FULL, PARTIAL]
+ *                 default: FULL
+ *                 description: Type of delegation
+ *     responses:
+ *       201:
+ *         description: Approval delegation set successfully
+ *       403:
+ *         description: Insufficient permissions
+ *       404:
+ *         description: Delegate user not found
+ */
+router.post(
+  '/approval/delegation',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  leaveController.setApprovalDelegation
+);
+
+/**
+ * @swagger
+ * /api/v1/leaves/approval/delegations:
+ *   get:
+ *     summary: Get active delegations
+ *     description: Retrieve list of active approval delegations
+ *     tags: [Leave Management]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active delegations retrieved successfully
+ *       403:
+ *         description: Insufficient permissions
+ */
+router.get(
+  '/approval/delegations',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  leaveController.getActiveDelegations
+);
+
+// ==================== CALENDAR INTEGRATION ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/leaves/calendar:
+ *   get:
+ *     summary: Get calendar view with leave requests and coverage analysis
+ *     tags: [Leave Management - Calendar]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Year to view (defaults to current year)
+ *       - in: query
+ *         name: month
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 12
+ *         description: Month to view (defaults to current month)
+ *       - in: query
+ *         name: view
+ *         schema:
+ *           type: string
+ *           enum: [week, month, quarter]
+ *           default: month
+ *         description: Calendar view type
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filter by department (admins/managers only)
+ *       - in: query
+ *         name: includeHolidays
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *           default: 'true'
+ *         description: Include holidays in the calendar
+ *       - in: query
+ *         name: includeWeekends
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *           default: 'true'
+ *         description: Include weekends in the calendar
+ *     responses:
+ *       200:
+ *         description: Calendar view retrieved successfully
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
+router.get('/calendar', leaveController.getCalendarView);
+
+/**
+ * @swagger
+ * /api/v1/leaves/team-coverage:
+ *   get:
+ *     summary: Get comprehensive team coverage analysis
+ *     tags: [Leave Management - Calendar]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for analysis
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for analysis
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filter by specific department
+ *       - in: query
+ *         name: includeSubDepartments
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *           default: 'false'
+ *         description: Include sub-departments in analysis
+ *     responses:
+ *       200:
+ *         description: Team coverage analysis completed successfully
+ *       400:
+ *         description: Invalid date range
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  '/team-coverage',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  leaveController.getTeamCoverage
+);
+
+/**
+ * @swagger
+ * /api/v1/leaves/conflicts:
+ *   get:
+ *     summary: Detect leave conflicts and staffing issues
+ *     tags: [Leave Management - Calendar]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Start date for conflict detection
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: End date for conflict detection
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filter by specific department
+ *       - in: query
+ *         name: leaveType
+ *         schema:
+ *           type: string
+ *           enum: [SICK, PERSONAL, VACATION, MATERNITY, PATERNITY, BEREAVEMENT, JURY_DUTY, EMERGENCY]
+ *         description: Filter by leave type
+ *       - in: query
+ *         name: minTeamSize
+ *         schema:
+ *           type: integer
+ *           default: 3
+ *         description: Minimum required team size
+ *     responses:
+ *       200:
+ *         description: Conflict detection completed successfully
+ *       400:
+ *         description: Invalid parameters
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
+router.get(
+  '/conflicts',
+  requireExactRole(['MANAGER', 'ADMIN']),
+  leaveController.detectLeaveConflicts
+);
+
+/**
+ * @swagger
+ * /api/v1/leaves/employee-availability:
+ *   post:
+ *     summary: Get employee availability for specific period
+ *     tags: [Leave Management - Calendar]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - employeeIds
+ *               - startDate
+ *               - endDate
+ *             properties:
+ *               employeeIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: List of employee IDs to check availability
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Start date for availability check
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: End date for availability check
+ *               includePartialDays:
+ *                 type: string
+ *                 enum: ['true', 'false']
+ *                 default: 'true'
+ *                 description: Include partial day leaves in analysis
+ *     responses:
+ *       200:
+ *         description: Employee availability retrieved successfully
+ *       400:
+ *         description: Invalid request parameters
+ *       403:
+ *         description: Forbidden
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/employee-availability', leaveController.getEmployeeAvailability);
+
 // ==================== LEAVE BALANCES ROUTES ====================
 
 /**

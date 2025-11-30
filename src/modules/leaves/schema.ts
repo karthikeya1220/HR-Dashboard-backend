@@ -762,6 +762,7 @@ export const updateHolidaySchema = z.object({
 
 // Query Schemas
 export const getLeaveRequestsQuerySchema = z.object({
+  // Pagination
   page: z.preprocess(
     (val) => (typeof val === 'string' ? parseInt(val) : val),
     z.number().min(1).default(1)
@@ -770,14 +771,101 @@ export const getLeaveRequestsQuerySchema = z.object({
     (val) => (typeof val === 'string' ? parseInt(val) : val),
     z.number().min(1).max(100).default(20)
   ),
+  
+  // Basic Filters
   employeeId: z.string().optional(),
   status: leaveRequestStatusSchema.optional(),
   leaveType: leaveTypeSchema.optional(),
   startDate: dateFormat.optional(),
   endDate: dateFormat.optional(),
   department: z.string().optional(),
-  sortBy: z.enum(['appliedAt', 'startDate', 'endDate', 'status']).default('appliedAt'),
+  
+  // Date Range Filters
+  appliedDateFrom: dateFormat.optional(),
+  appliedDateTo: dateFormat.optional(),
+  approvalDateFrom: dateFormat.optional(),
+  approvalDateTo: dateFormat.optional(),
+  
+  // Advanced Filters
+  isBackdated: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val),
+    z.boolean().optional()
+  ),
+  isEmergency: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val),
+    z.boolean().optional()
+  ),
+  approvalLevel: z.enum(['MANAGER', 'HR', 'BOTH', 'AUTO']).optional(),
+  employmentType: z.enum(['FULL_TIME', 'PART_TIME', 'INTERN', 'CONTRACT']).optional(),
+  
+  // Multi-status and multi-type filters
+  statuses: z.array(leaveRequestStatusSchema).optional(),
+  leaveTypes: z.array(leaveTypeSchema).optional(),
+  departments: z.array(z.string()).optional(),
+  
+  // Duration Filters
+  minDays: z.preprocess(
+    (val) => (typeof val === 'string' ? parseFloat(val) : val),
+    z.number().min(0).optional()
+  ),
+  maxDays: z.preprocess(
+    (val) => (typeof val === 'string' ? parseFloat(val) : val),
+    z.number().min(0).optional()
+  ),
+  
+  // Search
+  search: z.string().optional(),
+  searchField: z.enum(['reason', 'employeeName', 'comments', 'all']).default('all'),
+  
+  // Sorting
+  sortBy: z.enum([
+    'appliedAt', 'startDate', 'endDate', 'status', 'totalDays', 
+    'employeeName', 'leaveType', 'finalApprovedAt'
+  ]).default('appliedAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
+  
+  // Include related data
+  includeEmployee: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val),
+    z.boolean().default(true)
+  ),
+  includePolicy: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val),
+    z.boolean().default(true)
+  ),
+  includeAuditLogs: z.preprocess(
+    (val) => (typeof val === 'string' ? val.toLowerCase() === 'true' : val),
+    z.boolean().default(false)
+  ),
+  
+  // Export Options
+  export: z.enum(['csv', 'xlsx', 'pdf']).optional(),
+  exportFields: z.array(z.string()).optional(),
+});
+
+// Advanced search schema for complex queries
+export const advancedLeaveSearchSchema = z.object({
+  filters: z.array(
+    z.object({
+      field: z.string(),
+      operator: z.enum(['equals', 'contains', 'in', 'between', 'gt', 'lt', 'gte', 'lte']),
+      value: z.union([z.string(), z.number(), z.array(z.string())]),
+    })
+  ).optional(),
+  
+  // Logical operators for combining filters
+  logic: z.enum(['AND', 'OR']).default('AND'),
+  
+  // Quick filters
+  preset: z.enum([
+    'pending_approvals',
+    'my_requests',
+    'team_requests', 
+    'overdue_approvals',
+    'emergency_requests',
+    'long_leaves',
+    'recent_requests'
+  ]).optional(),
 });
 
 export const getLeaveBalanceQuerySchema = z.object({
