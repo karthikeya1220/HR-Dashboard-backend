@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Department } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { LeaveType, LeavePolicy, LeaveRequest, LeaveBalance, LeaveSettings } from '@prisma/client';
 import {
@@ -37,6 +37,7 @@ export class LeaveService {
         data: {
           ...data,
           effectiveFrom: data.effectiveFrom || new Date(),
+          createdBy: data.createdBy || 'system',
         },
       });
 
@@ -539,7 +540,7 @@ export class LeaveService {
         fiscalYear: currentFiscalYear,
         ...(query.department && {
           employee: {
-            department: query.department as string,
+            department: query.department as Department,
             isActive: query.includeInactive ? undefined : true,
           },
         }),

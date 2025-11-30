@@ -2,13 +2,14 @@
 import jwt from 'jsonwebtoken';
 
 const adminUser = {
-  id: 'cf9fe180-c529-4759-9098-58a8aba738a4',
-  email: 'admin@example.com',
+  id: '53367ec0-2b2e-49a4-a9b6-1469f6b9ebfd',
+  email: 'praneethdevarasetty31@gmail.com',
   role: 'ADMIN',
-  name: 'Admin User'
+  name: 'Admin User',
 };
 
-const secret = 'Ze71FJBfEiZsl1dGENnYqBTd2Q0aJkO9kYSwx1HqfEJ/91qHNmYL2Bj3y7vSApUXi6+O5ZJ2QPXE2mW7xBPzrA==';
+const secret =
+  'Ze71FJBfEiZsl1dGENnYqBTd2Q0aJkO9kYSwx1HqfEJ/91qHNmYL2Bj3y7vSApUXi6+O5ZJ2QPXE2mW7xBPzrA==';
 
 const token = jwt.sign(adminUser, secret, { expiresIn: '24h' });
 

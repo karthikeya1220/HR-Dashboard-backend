@@ -92,7 +92,7 @@ export const createLeavePolicySchema = z
     // Metadata
     effectiveFrom: dateFormat.optional(),
     effectiveUntil: dateFormat.optional(),
-    createdBy: requiredString,
+    createdBy: requiredString.optional(),
   })
   .refine(
     (data) => {
@@ -762,8 +762,14 @@ export const updateHolidaySchema = z.object({
 
 // Query Schemas
 export const getLeaveRequestsQuerySchema = z.object({
-  page: z.number().min(1).default(1),
-  limit: z.number().min(1).max(100).default(20),
+  page: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val) : val),
+    z.number().min(1).default(1)
+  ),
+  limit: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val) : val),
+    z.number().min(1).max(100).default(20)
+  ),
   employeeId: z.string().optional(),
   status: leaveRequestStatusSchema.optional(),
   leaveType: leaveTypeSchema.optional(),
@@ -776,16 +782,30 @@ export const getLeaveRequestsQuerySchema = z.object({
 
 export const getLeaveBalanceQuerySchema = z.object({
   employeeId: z.string().optional(),
-  fiscalYear: z.number().min(2020).max(2050).optional(),
+  fiscalYear: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val) : val),
+    z.number().min(2020).max(2050).optional()
+  ),
   department: z.string().optional(),
-  includeInactive: z.boolean().default(false),
+  includeInactive: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      return val.toLowerCase() === 'true';
+    }
+    return val;
+  }, z.boolean().default(false)),
 });
 
 export const getLeaveAnalyticsQuerySchema = z.object({
-  fiscalYear: z.number().min(2020).max(2050),
+  fiscalYear: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val) : val),
+    z.number().min(2020).max(2050)
+  ),
   department: z.string().optional(),
   location: z.string().optional(),
-  month: z.number().min(1).max(12).optional(),
+  month: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val) : val),
+    z.number().min(1).max(12).optional()
+  ),
   leaveType: leaveTypeSchema.optional(),
   granularity: z.enum(['monthly', 'quarterly', 'yearly']).default('monthly'),
 });

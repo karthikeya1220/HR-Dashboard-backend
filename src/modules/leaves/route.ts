@@ -16,6 +16,7 @@ import {
   updateHolidaySchema,
   approveLeaveRequestBodySchema,
   updateLeaveBalanceBodySchema,
+  getLeaveRequestsQuerySchema,
 } from './schema.js';
 
 const router = Router();
@@ -595,7 +596,11 @@ router.post(
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
-router.get('/requests', leaveController.getLeaveRequests);
+router.get(
+  '/requests',
+  validateRequest({ query: getLeaveRequestsQuerySchema }),
+  leaveController.getLeaveRequests
+);
 
 /**
  * @swagger
