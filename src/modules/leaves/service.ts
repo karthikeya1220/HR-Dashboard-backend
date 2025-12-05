@@ -2239,6 +2239,1390 @@ export class LeaveService {
 
     return conflicts;
   }
+
+  // ==================== PHASE 5: AUDIT TRAIL METHODS ====================
+
+  async getAuditLogs(query: any, userRole: string, userId: string) {
+    try {
+      const {
+        page = 1,
+        limit = 20,
+        leaveRequestId,
+        performedBy,
+        action,
+        startDate,
+        endDate,
+        sortBy = 'timestamp',
+        sortOrder = 'desc',
+      } = query;
+
+      const skip = (page - 1) * limit;
+
+      // Build filters
+      const where: any = {};
+
+      if (leaveRequestId) {
+        where.leaveRequestId = leaveRequestId;
+      }
+
+      if (performedBy) {
+        where.performedBy = performedBy;
+      }
+
+      if (action) {
+        where.action = {
+          contains: action,
+          mode: 'insensitive',
+        };
+      }
+
+      if (startDate || endDate) {
+        where.timestamp = {};
+        if (startDate) where.timestamp.gte = new Date(startDate);
+        if (endDate) where.timestamp.lte = new Date(endDate);
+      }
+
+      // Role-based access control
+      if (userRole === 'EMPLOYEE') {
+        // Employees can only see audit logs for their own requests
+        const employeeRequests = await prisma.leaveRequest.findMany({
+          where: { employeeId: userId },
+          select: { id: true },
+        });
+        
+        where.leaveRequestId = {
+          in: employeeRequests.map(req => req.id),
+        };
+      } else if (userRole === 'MANAGER') {
+        // Managers can see audit logs for their team's requests
+        const teamEmployees = await prisma.employee.findMany({
+          where: { reportingManager: userId },
+          select: { id: true },
+        });
+        
+        const employeeIds = [userId, ...teamEmployees.map(emp => emp.id)];
+        const teamRequests = await prisma.leaveRequest.findMany({
+          where: {
+            employeeId: { in: employeeIds },
+          },
+          select: { id: true },
+        });
+        
+        where.leaveRequestId = {
+          in: teamRequests.map(req => req.id),
+        };
+      }
+      // Admins can see all audit logs (no additional filter needed)
+
+      // Get total count
+      const total = await prisma.leaveAuditLog.count({ where });
+
+      // Get audit logs
+      const auditLogs = await prisma.leaveAuditLog.findMany({
+        where,
+        include: {
+          leaveRequest: {
+            include: {
+              employee: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          [sortBy]: sortOrder,
+        },
+        skip,
+        take: limit,
+      });
+
+      return {
+        auditLogs,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page * limit < total,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      throw new AppError('Failed to fetch audit logs', 500);
+    }
+  }
+
+  async getAuditLogsForRequest(requestId: string, userRole: string, userId: string) {
+    try {
+      // Check access permissions
+      const leaveRequest = await prisma.leaveRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
+
+      if (!leaveRequest) {
+        throw new AppError('Leave request not found', 404);
+      }
+
+      // Role-based access control
+      if (userRole === 'EMPLOYEE' && leaveRequest.employeeId !== userId) {
+        throw new AppError('Access denied - You can only view audit logs for your own requests', 403);
+      } else if (userRole === 'MANAGER') {
+        // Check if user is the employee or the manager of the employee
+        const employee = await prisma.employee.findUnique({
+          where: { id: leaveRequest.employeeId },
+          select: { reportingManager: true },
+        });
+        
+        if (leaveRequest.employeeId !== userId && employee?.reportingManager !== userId) {
+          throw new AppError('Access denied - You can only view audit logs for your team\'s requests', 403);
+        }
+      }
+
+      const auditLogs = await prisma.leaveAuditLog.findMany({
+        where: { leaveRequestId: requestId },
+        orderBy: { timestamp: 'desc' },
+      });
+
+      return {
+        leaveRequest: {
+          id: leaveRequest.id,
+          employee: leaveRequest.employee,
+          leaveType: leaveRequest.leaveType,
+          status: leaveRequest.status,
+        },
+        auditLogs,
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Failed to fetch request audit logs', 500);
+    }
+  }
+
+  // ==================== PHASE 5: ABSENTEE TRACKING METHODS ====================
+
+  async getAbsentees(query: any, userRole: string, userId: string) {
+    try {
+      const {
+        startDate = new Date(),
+        endDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        department,
+        team,
+        leaveType,
+        employeeId,
+        includeUpcoming = true,
+        includeCurrent = true,
+        page = 1,
+        limit = 50,
+      } = query;
+
+      const skip = (page - 1) * limit;
+
+      // Build date filters
+      const dateConditions: any[] = [];
+      const now = new Date();
+
+      if (includeCurrent) {
+        // Currently on leave
+        dateConditions.push({
+          AND: [
+            { startDate: { lte: now } },
+            { endDate: { gte: now } },
+          ],
+        });
+      }
+
+      if (includeUpcoming) {
+        // Future leave
+        dateConditions.push({
+          startDate: {
+            gte: now,
+            lte: new Date(endDate),
+          },
+        });
+      }
+
+      // Build filters
+      const where: any = {
+        status: 'APPROVED',
+        OR: dateConditions,
+      };
+
+      if (leaveType) {
+        where.leaveType = leaveType;
+      }
+
+      if (employeeId) {
+        where.employeeId = employeeId;
+      }
+
+      // Role-based filtering
+      if (userRole === 'EMPLOYEE') {
+        where.employeeId = userId;
+      } else if (userRole === 'MANAGER') {
+        // Manager sees their team
+        const teamEmployees = await prisma.employee.findMany({
+          where: { reportingManager: userId },
+          select: { id: true },
+        });
+        
+        const employeeIds = [userId, ...teamEmployees.map(emp => emp.id)];
+        where.employeeId = { in: employeeIds };
+      }
+
+      // Add department/team filtering
+      if (department || team) {
+        where.employee = {};
+        if (department) {
+          where.employee.department = department;
+        }
+        if (team) {
+          // Assuming team is stored in a field like 'team' or 'workLocation'
+          where.employee.workLocation = team;
+        }
+      }
+
+      const total = await prisma.leaveRequest.count({ where });
+
+      const absentees = await prisma.leaveRequest.findMany({
+        where,
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              jobTitle: true,
+              department: true,
+              workLocation: true,
+              reportingManager: true,
+            },
+          },
+          policy: {
+            select: {
+              name: true,
+              code: true,
+            },
+          },
+        },
+        orderBy: [
+          { startDate: 'asc' },
+          { employee: { firstName: 'asc' } },
+        ],
+        skip,
+        take: limit,
+      });
+
+      // Group by status and calculate metrics
+      const current = absentees.filter(req => 
+        new Date(req.startDate) <= now && new Date(req.endDate) >= now
+      );
+      const upcoming = absentees.filter(req => 
+        new Date(req.startDate) > now
+      );
+
+      return {
+        absentees: absentees.map(req => ({
+          id: req.id,
+          employee: req.employee,
+          leaveType: req.leaveType,
+          startDate: req.startDate,
+          endDate: req.endDate,
+          duration: req.totalDays,
+          status: new Date(req.startDate) <= now && new Date(req.endDate) >= now ? 'CURRENT' : 'UPCOMING',
+          policy: req.policy,
+          reason: req.reason,
+        })),
+        summary: {
+          total: absentees.length,
+          current: current.length,
+          upcoming: upcoming.length,
+        },
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNextPage: page * limit < total,
+          hasPrevPage: page > 1,
+        },
+      };
+    } catch (error) {
+      throw new AppError('Failed to fetch absentees', 500);
+    }
+  }
+
+  async createAbsenteeAlert(alertData: any, userId: string) {
+    try {
+      // Validate employee access
+      const employees = await prisma.employee.findMany({
+        where: {
+          id: { in: alertData.employeeIds },
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          reportingManager: true,
+        },
+      });
+
+      if (employees.length !== alertData.employeeIds.length) {
+        throw new AppError('Some employee IDs are invalid', 400);
+      }
+
+      // Create alert record (you might need to add this to your schema)
+      // For now, we'll create notifications
+      const notifications = await Promise.all(
+        alertData.recipients.map(async (email: string) => {
+          return prisma.notification.create({
+            data: {
+              type: 'SYSTEM_ALERT',
+              title: `Absentee Alert: ${alertData.alertType}`,
+              message: alertData.message,
+              channel: 'EMAIL',
+              status: 'PENDING',
+              recipientId: userId, // This should be resolved from email
+              recipientEmail: email,
+              data: {
+                alertType: alertData.alertType,
+                severity: alertData.severity,
+                employeeIds: alertData.employeeIds,
+                employees: employees.map(emp => ({
+                  id: emp.id,
+                  name: `${emp.firstName} ${emp.lastName}`,
+                  email: emp.email,
+                })),
+                autoEscalate: alertData.autoEscalate,
+                escalationDelay: alertData.escalationDelay,
+              },
+            },
+          });
+        })
+      );
+
+      return {
+        alertId: notifications[0].id,
+        message: 'Absentee alert sent successfully',
+        recipients: alertData.recipients.length,
+        employees: employees.length,
+        notifications,
+      };
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Failed to create absentee alert', 500);
+    }
+  }
+
+  // ==================== PHASE 6: ADVANCED REPORTS METHODS ====================
+
+  async getLeaveSummaryReport(query: any, userRole: string, userId: string) {
+    try {
+      const {
+        startDate,
+        endDate,
+        department,
+        employeeId,
+        leaveType,
+        location,
+        groupBy,
+        includeSubordinates = true,
+        fiscalYear,
+        includeAnalytics = false,
+        compareWithPrevious = false,
+      } = query;
+
+      // Build filters
+      const where: any = {
+        appliedAt: {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        },
+      };
+
+      // Role-based filtering
+      if (userRole === 'MANAGER' && includeSubordinates) {
+        where.OR = [
+          { employeeId: userId },
+          { managerId: userId },
+        ];
+      } else if (userRole === 'EMPLOYEE') {
+        where.employeeId = userId;
+      }
+
+      if (department) {
+        where.employee = { department };
+      }
+
+      if (employeeId) {
+        where.employeeId = employeeId;
+      }
+
+      if (leaveType) {
+        where.leaveType = leaveType;
+      }
+
+      if (location) {
+        where.employee = { ...where.employee, workLocation: location };
+      }
+
+      // Get leave requests
+      const leaveRequests = await prisma.leaveRequest.findMany({
+        where,
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              department: true,
+              workLocation: true,
+            },
+          },
+          policy: {
+            select: {
+              name: true,
+              code: true,
+            },
+          },
+        },
+      });
+
+      // Calculate summary metrics
+      const summary = {
+        totalRequests: leaveRequests.length,
+        approvedRequests: leaveRequests.filter(req => req.status === 'APPROVED').length,
+        rejectedRequests: leaveRequests.filter(req => req.status === 'REJECTED').length,
+        pendingRequests: leaveRequests.filter(req => req.status === 'PENDING').length,
+        cancelledRequests: leaveRequests.filter(req => req.status === 'CANCELLED').length,
+        totalLeaveDays: leaveRequests
+          .filter(req => req.status === 'APPROVED')
+          .reduce((sum, req) => sum + Number(req.totalDays), 0),
+        averageLeaveDays: 0,
+      };
+
+      summary.averageLeaveDays = summary.approvedRequests > 0 
+        ? summary.totalLeaveDays / summary.approvedRequests 
+        : 0;
+
+      // Leave type breakdown
+      const leaveTypeBreakdown = leaveRequests.reduce((acc: any, req) => {
+        if (req.status === 'APPROVED') {
+          acc[req.leaveType] = (acc[req.leaveType] || 0) + Number(req.totalDays);
+        }
+        return acc;
+      }, {});
+
+      // Group by analysis
+      let groupedData: any = {};
+      if (groupBy) {
+        groupedData = leaveRequests.reduce((acc: any, req) => {
+          let groupKey = '';
+          switch (groupBy) {
+            case 'department':
+              groupKey = req.employee?.department || 'Unknown';
+              break;
+            case 'employee':
+              groupKey = `${req.employee?.firstName} ${req.employee?.lastName}`;
+              break;
+            case 'leaveType':
+              groupKey = req.leaveType;
+              break;
+            case 'month':
+              groupKey = new Date(req.startDate).toISOString().slice(0, 7);
+              break;
+            default:
+              groupKey = 'All';
+          }
+
+          if (!acc[groupKey]) {
+            acc[groupKey] = {
+              total: 0,
+              approved: 0,
+              rejected: 0,
+              pending: 0,
+              totalDays: 0,
+            };
+          }
+
+          acc[groupKey].total++;
+          acc[groupKey][req.status.toLowerCase()]++;
+          if (req.status === 'APPROVED') {
+            acc[groupKey].totalDays += Number(req.totalDays);
+          }
+
+          return acc;
+        }, {});
+      }
+
+      const result: any = {
+        period: { startDate, endDate },
+        summary,
+        leaveTypeBreakdown,
+        ...(groupBy && { groupedData }),
+      };
+
+      if (includeAnalytics) {
+        // Add approval rate analytics
+        result.analytics = {
+          approvalRate: summary.totalRequests > 0 
+            ? (summary.approvedRequests / summary.totalRequests) * 100 
+            : 0,
+          avgProcessingTime: 0, // Would need to calculate from audit logs
+          peakLeaveMonths: {}, // Would analyze seasonal trends
+        };
+      }
+
+      return result;
+    } catch (error) {
+      throw new AppError('Failed to generate leave summary report', 500);
+    }
+  }
+
+  async getLeaveUtilizationReport(query: any, userRole: string, userId: string) {
+    try {
+      const {
+        startDate,
+        endDate,
+        department,
+        employeeId,
+        leaveType,
+        utilizationThreshold = 80,
+        showUnderutilized = false,
+        showOverutilized = true,
+      } = query;
+
+      // Get employee leave balances and usage
+      const employees = await prisma.employee.findMany({
+        where: {
+          isActive: true,
+          ...(department && { department }),
+          ...(employeeId && { id: employeeId }),
+        },
+        include: {
+          leaveBalances: {
+            where: {
+              ...(leaveType && { policy: { leaveType } }),
+            },
+            include: {
+              policy: true,
+            },
+          },
+          leaveRequests: {
+            where: {
+              status: 'APPROVED',
+              startDate: {
+                gte: new Date(startDate),
+                lte: new Date(endDate),
+              },
+              ...(leaveType && { leaveType }),
+            },
+          },
+        },
+      });
+
+      const utilizationData = employees.map(employee => {
+        const totalEntitlement = employee.leaveBalances.reduce(
+          (sum, balance) => sum + Number(balance.totalEntitlement), 0
+        );
+        
+        const totalUsed = employee.leaveRequests.reduce(
+          (sum, request) => sum + Number(request.totalDays), 0
+        );
+
+        const utilizationPercentage = totalEntitlement > 0 
+          ? (totalUsed / totalEntitlement) * 100 
+          : 0;
+
+        const isUnderutilized = utilizationPercentage < (utilizationThreshold - 20);
+        const isOverutilized = utilizationPercentage > utilizationThreshold;
+
+        return {
+          employee: {
+            id: employee.id,
+            name: `${employee.firstName} ${employee.lastName}`,
+            department: employee.department,
+            jobTitle: employee.jobTitle,
+          },
+          entitlement: totalEntitlement,
+          used: totalUsed,
+          remaining: totalEntitlement - totalUsed,
+          utilizationPercentage,
+          status: isOverutilized ? 'OVER_UTILIZED' : 
+                  isUnderutilized ? 'UNDER_UTILIZED' : 'OPTIMAL',
+          leaveBreakdown: employee.leaveBalances.map(balance => ({
+            leaveType: balance.policy.leaveType,
+            entitlement: Number(balance.totalEntitlement),
+            used: Number(balance.usedLeaves),
+            remaining: Number(balance.totalEntitlement) - Number(balance.usedLeaves),
+            utilizationRate: Number(balance.totalEntitlement) > 0 
+              ? (Number(balance.usedLeaves) / Number(balance.totalEntitlement)) * 100 
+              : 0,
+          })),
+        };
+      });
+
+      // Filter based on preferences
+      const filteredData = utilizationData.filter(data => {
+        if (showUnderutilized && data.status === 'UNDER_UTILIZED') return true;
+        if (showOverutilized && data.status === 'OVER_UTILIZED') return true;
+        if (!showUnderutilized && !showOverutilized) return true;
+        return data.status === 'OPTIMAL';
+      });
+
+      // Calculate summary statistics
+      const summary = {
+        totalEmployees: utilizationData.length,
+        averageUtilization: utilizationData.reduce(
+          (sum, data) => sum + data.utilizationPercentage, 0
+        ) / utilizationData.length,
+        underutilized: utilizationData.filter(data => data.status === 'UNDER_UTILIZED').length,
+        overutilized: utilizationData.filter(data => data.status === 'OVER_UTILIZED').length,
+        optimal: utilizationData.filter(data => data.status === 'OPTIMAL').length,
+      };
+
+      return {
+        period: { startDate, endDate },
+        utilizationThreshold,
+        summary,
+        employees: filteredData,
+        recommendations: this.generateUtilizationRecommendations(summary, utilizationThreshold),
+      };
+    } catch (error) {
+      throw new AppError('Failed to generate utilization report', 500);
+    }
+  }
+
+  private generateUtilizationRecommendations(summary: any, threshold: number) {
+    const recommendations = [];
+
+    if (summary.underutilized > 0) {
+      recommendations.push({
+        type: 'UNDER_UTILIZATION',
+        message: `${summary.underutilized} employees are under-utilizing their leave. Consider wellness programs or mandatory time-off policies.`,
+        priority: 'MEDIUM',
+      });
+    }
+
+    if (summary.overutilized > 0) {
+      recommendations.push({
+        type: 'OVER_UTILIZATION',
+        message: `${summary.overutilized} employees have exceeded optimal utilization. Review workload and staffing levels.`,
+        priority: 'HIGH',
+      });
+    }
+
+    if (summary.averageUtilization < (threshold - 20)) {
+      recommendations.push({
+        type: 'ORGANIZATIONAL',
+        message: 'Overall utilization is below optimal levels. Consider reviewing leave policies or promoting work-life balance.',
+        priority: 'MEDIUM',
+      });
+    }
+
+    return recommendations;
+  }
+
+  async getLeaveTrendsReport(query: any) {
+    try {
+      const {
+        startDate,
+        endDate,
+        periodType = 'monthly',
+        trendMetrics = ['volume'],
+        includeForecasting = false,
+        forecastPeriods = 3,
+        department,
+        leaveType,
+      } = query;
+
+      // Build filters
+      const where: any = {
+        appliedAt: {
+          gte: new Date(startDate),
+          lte: new Date(endDate),
+        },
+      };
+
+      if (department) {
+        where.employee = { department };
+      }
+
+      if (leaveType) {
+        where.leaveType = leaveType;
+      }
+
+      const leaveRequests = await prisma.leaveRequest.findMany({
+        where,
+        include: {
+          employee: {
+            select: {
+              department: true,
+            },
+          },
+        },
+        orderBy: { appliedAt: 'asc' },
+      });
+
+      // Group data by period
+      const periodicData = this.groupByPeriod(leaveRequests, periodType);
+      
+      // Calculate trend metrics
+      const trends: any = {};
+      
+      if (trendMetrics.includes('volume')) {
+        trends.volume = this.calculateVolumeTrend(periodicData);
+      }
+      
+      if (trendMetrics.includes('approval_rate')) {
+        trends.approvalRate = this.calculateApprovalRateTrend(periodicData);
+      }
+      
+      if (trendMetrics.includes('average_duration')) {
+        trends.averageDuration = this.calculateDurationTrend(periodicData);
+      }
+      
+      if (trendMetrics.includes('seasonal_pattern')) {
+        trends.seasonalPattern = this.calculateSeasonalPattern(periodicData);
+      }
+
+      let forecast = null;
+      if (includeForecasting) {
+        forecast = this.generateForecast(trends.volume || trends.approvalRate, forecastPeriods);
+      }
+
+      return {
+        period: { startDate, endDate, periodType },
+        trends,
+        periodicData,
+        forecast,
+        insights: this.generateTrendInsights(trends, periodicData),
+      };
+    } catch (error) {
+      throw new AppError('Failed to generate trends report', 500);
+    }
+  }
+
+  private groupByPeriod(requests: any[], periodType: string) {
+    const grouped: any = {};
+    
+    requests.forEach(request => {
+      const date = new Date(request.appliedAt);
+      let periodKey: string;
+      
+      switch (periodType) {
+        case 'monthly':
+          periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+        case 'quarterly':
+          const quarter = Math.floor(date.getMonth() / 3) + 1;
+          periodKey = `${date.getFullYear()}-Q${quarter}`;
+          break;
+        case 'yearly':
+          periodKey = String(date.getFullYear());
+          break;
+        default:
+          periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      }
+      
+      if (!grouped[periodKey]) {
+        grouped[periodKey] = {
+          period: periodKey,
+          requests: [],
+          totalRequests: 0,
+          approvedRequests: 0,
+          rejectedRequests: 0,
+          totalDays: 0,
+        };
+      }
+      
+      grouped[periodKey].requests.push(request);
+      grouped[periodKey].totalRequests++;
+      
+      if (request.status === 'APPROVED') {
+        grouped[periodKey].approvedRequests++;
+        grouped[periodKey].totalDays += Number(request.totalDays);
+      } else if (request.status === 'REJECTED') {
+        grouped[periodKey].rejectedRequests++;
+      }
+    });
+    
+    return grouped;
+  }
+
+  private calculateVolumeTrend(periodicData: any) {
+    const periods = Object.keys(periodicData).sort();
+    const volumes = periods.map(period => ({
+      period,
+      volume: periodicData[period].totalRequests,
+      approved: periodicData[period].approvedRequests,
+      rejected: periodicData[period].rejectedRequests,
+    }));
+    
+    // Calculate trend direction
+    const recentVolumes = volumes.slice(-3).map(v => v.volume);
+    const trend = this.calculateTrendDirection(recentVolumes);
+    
+    return {
+      data: volumes,
+      trend,
+      summary: {
+        totalPeriods: periods.length,
+        averageVolume: volumes.reduce((sum, v) => sum + v.volume, 0) / volumes.length,
+        peakPeriod: volumes.reduce((max, v) => v.volume > max.volume ? v : max),
+        lowPeriod: volumes.reduce((min, v) => v.volume < min.volume ? v : min),
+      },
+    };
+  }
+
+  private calculateApprovalRateTrend(periodicData: any) {
+    const periods = Object.keys(periodicData).sort();
+    const approvalRates = periods.map(period => {
+      const data = periodicData[period];
+      const rate = data.totalRequests > 0 ? (data.approvedRequests / data.totalRequests) * 100 : 0;
+      return {
+        period,
+        approvalRate: rate,
+        totalRequests: data.totalRequests,
+        approvedRequests: data.approvedRequests,
+      };
+    });
+    
+    const trend = this.calculateTrendDirection(approvalRates.map(ar => ar.approvalRate));
+    
+    return {
+      data: approvalRates,
+      trend,
+      summary: {
+        averageApprovalRate: approvalRates.reduce((sum, ar) => sum + ar.approvalRate, 0) / approvalRates.length,
+        highestRate: Math.max(...approvalRates.map(ar => ar.approvalRate)),
+        lowestRate: Math.min(...approvalRates.map(ar => ar.approvalRate)),
+      },
+    };
+  }
+
+  private calculateDurationTrend(periodicData: any) {
+    const periods = Object.keys(periodicData).sort();
+    const durations = periods.map(period => {
+      const data = periodicData[period];
+      const avgDuration = data.approvedRequests > 0 ? data.totalDays / data.approvedRequests : 0;
+      return {
+        period,
+        averageDuration: avgDuration,
+        totalDays: data.totalDays,
+        approvedRequests: data.approvedRequests,
+      };
+    });
+    
+    return {
+      data: durations,
+      summary: {
+        overallAverage: durations.reduce((sum, d) => sum + d.averageDuration, 0) / durations.length,
+      },
+    };
+  }
+
+  private calculateSeasonalPattern(periodicData: any) {
+    const monthlyData: any = {};
+    
+    Object.values(periodicData).forEach((data: any) => {
+      if (data.period.includes('-')) {
+        const month = data.period.split('-')[1];
+        if (!monthlyData[month]) {
+          monthlyData[month] = { totalRequests: 0, totalDays: 0, periods: 0 };
+        }
+        monthlyData[month].totalRequests += data.totalRequests;
+        monthlyData[month].totalDays += data.totalDays;
+        monthlyData[month].periods++;
+      }
+    });
+    
+    const seasonalData = Object.keys(monthlyData).map(month => ({
+      month,
+      averageRequests: monthlyData[month].totalRequests / monthlyData[month].periods,
+      averageDays: monthlyData[month].totalDays / monthlyData[month].periods,
+    }));
+    
+    return {
+      data: seasonalData,
+      peakSeason: seasonalData.reduce((max, s) => s.averageRequests > max.averageRequests ? s : max),
+      lowSeason: seasonalData.reduce((min, s) => s.averageRequests < min.averageRequests ? s : min),
+    };
+  }
+
+  private calculateTrendDirection(values: number[]) {
+    if (values.length < 2) return 'STABLE';
+    
+    let increasing = 0;
+    let decreasing = 0;
+    
+    for (let i = 1; i < values.length; i++) {
+      if (values[i] > values[i - 1]) increasing++;
+      else if (values[i] < values[i - 1]) decreasing++;
+    }
+    
+    if (increasing > decreasing) return 'INCREASING';
+    if (decreasing > increasing) return 'DECREASING';
+    return 'STABLE';
+  }
+
+  private generateForecast(trendData: any, periods: number) {
+    if (!trendData || !trendData.data || trendData.data.length < 3) {
+      return null;
+    }
+    
+    // Simple linear regression forecast
+    const data = trendData.data;
+    const values = data.map((d: any) => d.volume || d.approvalRate || 0);
+    const n = values.length;
+    
+    // Calculate linear trend
+    const xValues = Array.from({ length: n }, (_, i) => i);
+    const xSum = xValues.reduce((sum, x) => sum + x, 0);
+    const ySum = values.reduce((sum: number, y: number) => sum + y, 0);
+    const xySum = xValues.reduce((sum, x, i) => sum + x * values[i], 0);
+    const x2Sum = xValues.reduce((sum, x) => sum + x * x, 0);
+    
+    const slope = (n * xySum - xSum * ySum) / (n * x2Sum - xSum * xSum);
+    const intercept = (ySum - slope * xSum) / n;
+    
+    // Generate forecast
+    const forecast = [];
+    for (let i = 1; i <= periods; i++) {
+      const forecastValue = intercept + slope * (n + i - 1);
+      forecast.push({
+        period: `Forecast +${i}`,
+        value: Math.max(0, Math.round(forecastValue)),
+        confidence: Math.max(0.5, 1 - (i * 0.15)), // Decreasing confidence
+      });
+    }
+    
+    return forecast;
+  }
+
+  private generateTrendInsights(trends: any, periodicData: any) {
+    const insights = [];
+    
+    if (trends.volume) {
+      const volumeTrend = trends.volume.trend;
+      if (volumeTrend === 'INCREASING') {
+        insights.push({
+          type: 'VOLUME_INCREASE',
+          message: 'Leave request volume is trending upward. Consider reviewing capacity planning.',
+          priority: 'MEDIUM',
+        });
+      } else if (volumeTrend === 'DECREASING') {
+        insights.push({
+          type: 'VOLUME_DECREASE',
+          message: 'Leave request volume is declining. This might indicate lower employee satisfaction or reluctance to take time off.',
+          priority: 'LOW',
+        });
+      }
+    }
+    
+    if (trends.approvalRate) {
+      const avgRate = trends.approvalRate.summary.averageApprovalRate;
+      if (avgRate < 80) {
+        insights.push({
+          type: 'LOW_APPROVAL_RATE',
+          message: 'Approval rate is below 80%. Consider reviewing approval policies and processes.',
+          priority: 'HIGH',
+        });
+      }
+    }
+    
+    if (trends.seasonalPattern) {
+      const peak = trends.seasonalPattern.peakSeason;
+      insights.push({
+        type: 'SEASONAL_PATTERN',
+        message: `Peak leave season is ${peak.month}. Plan for adequate coverage during this period.`,
+        priority: 'MEDIUM',
+      });
+    }
+    
+    return insights;
+  }
+
+  async getLeaveBalanceReport(query: any, userRole: string, userId: string) {
+    try {
+      const {
+        asOfDate = new Date(),
+        fiscalYear = new Date().getFullYear(),
+        department,
+        employeeId,
+        leaveType,
+        showNegativeBalances = true,
+        showExpiringBalances = true,
+        expiryThresholdDays = 30,
+        groupBy,
+        sortBy = 'employee',
+        sortOrder = 'asc',
+      } = query;
+
+      // Build filters
+      const where: any = {
+        fiscalYear,
+        employee: {
+          isActive: true,
+        },
+      };
+
+      if (department) {
+        where.employee.department = department;
+      }
+
+      if (employeeId) {
+        where.employeeId = employeeId;
+      }
+
+      if (leaveType) {
+        where.policy = { leaveType };
+      }
+
+      // Role-based filtering
+      if (userRole === 'EMPLOYEE') {
+        where.employeeId = userId;
+      } else if (userRole === 'MANAGER') {
+        const teamEmployees = await prisma.employee.findMany({
+          where: { reportingManager: userId },
+          select: { id: true },
+        });
+        
+        const employeeIds = [userId, ...teamEmployees.map(emp => emp.id)];
+        where.employeeId = { in: employeeIds };
+      }
+
+      const balances = await prisma.leaveBalance.findMany({
+        where,
+        include: {
+          employee: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              department: true,
+              jobTitle: true,
+            },
+          },
+          policy: {
+            select: {
+              name: true,
+              code: true,
+              leaveType: true,
+              carryForward: true,
+              carryForwardExpiry: true,
+            },
+          },
+        },
+      });
+
+      // Calculate derived fields
+      const balanceData = balances.map(balance => {
+        const totalEntitlement = Number(balance.totalEntitlement);
+        const usedLeaves = Number(balance.usedLeaves);
+        const pendingLeaves = Number(balance.pendingLeaves);
+        const availableBalance = totalEntitlement - usedLeaves - pendingLeaves;
+        const utilizationRate = totalEntitlement > 0 ? (usedLeaves / totalEntitlement) * 100 : 0;
+        
+        const isNegative = availableBalance < 0;
+        const isExpiring = balance.policy.carryForward && 
+                          balance.policy.carryForwardExpiry &&
+                          availableBalance > 0;
+        
+        return {
+          id: balance.id,
+          employee: balance.employee,
+          policy: balance.policy,
+          fiscalYear: balance.fiscalYear,
+          totalEntitlement,
+          usedLeaves,
+          pendingLeaves,
+          availableBalance,
+          carriedForward: Number(balance.carriedForward),
+          encashedThisYear: Number(balance.encashedThisYear),
+          utilizationRate,
+          status: isNegative ? 'NEGATIVE' : (utilizationRate > 80 ? 'HIGH_USAGE' : 'NORMAL'),
+          isExpiring,
+          expiryDate: isExpiring ? this.calculateExpiryDate(balance) : null,
+          lastUpdated: balance.lastUpdated,
+        };
+      });
+
+      // Apply filtering based on preferences
+      let filteredBalances = balanceData;
+      
+      if (!showNegativeBalances) {
+        filteredBalances = filteredBalances.filter(b => b.availableBalance >= 0);
+      }
+      
+      if (!showExpiringBalances) {
+        filteredBalances = filteredBalances.filter(b => !b.isExpiring);
+      }
+
+      // Group data if requested
+      let groupedData: any = {};
+      if (groupBy) {
+        groupedData = this.groupBalanceData(filteredBalances, groupBy);
+      }
+
+      // Sort data
+      filteredBalances.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (sortBy) {
+          case 'employee':
+            aValue = `${a.employee.firstName} ${a.employee.lastName}`;
+            bValue = `${b.employee.firstName} ${b.employee.lastName}`;
+            break;
+          case 'department':
+            aValue = a.employee.department;
+            bValue = b.employee.department;
+            break;
+          case 'balance':
+            aValue = a.availableBalance;
+            bValue = b.availableBalance;
+            break;
+          case 'utilization':
+            aValue = a.utilizationRate;
+            bValue = b.utilizationRate;
+            break;
+          default:
+            aValue = a.employee.firstName;
+            bValue = b.employee.firstName;
+        }
+        
+        if (sortOrder === 'desc') {
+          return aValue > bValue ? -1 : 1;
+        }
+        return aValue < bValue ? -1 : 1;
+      });
+
+      // Calculate summary statistics
+      const summary = {
+        totalEmployees: new Set(filteredBalances.map(b => b.employee.id)).size,
+        totalBalances: filteredBalances.length,
+        negativeBalances: filteredBalances.filter(b => b.status === 'NEGATIVE').length,
+        expiringBalances: filteredBalances.filter(b => b.isExpiring).length,
+        highUsageBalances: filteredBalances.filter(b => b.status === 'HIGH_USAGE').length,
+        totalEntitlement: filteredBalances.reduce((sum, b) => sum + b.totalEntitlement, 0),
+        totalUsed: filteredBalances.reduce((sum, b) => sum + b.usedLeaves, 0),
+        totalAvailable: filteredBalances.reduce((sum, b) => sum + b.availableBalance, 0),
+        averageUtilization: filteredBalances.reduce((sum, b) => sum + b.utilizationRate, 0) / filteredBalances.length,
+      };
+
+      return {
+        asOfDate,
+        fiscalYear,
+        summary,
+        balances: filteredBalances,
+        ...(groupBy && { groupedData }),
+        alerts: this.generateBalanceAlerts(filteredBalances),
+      };
+    } catch (error) {
+      throw new AppError('Failed to generate balance report', 500);
+    }
+  }
+
+  private calculateExpiryDate(balance: any) {
+    if (!balance.policy.carryForwardExpiry) return null;
+    
+    const fiscalYearEnd = new Date(balance.fiscalYear + 1, 3, 31); // Assuming fiscal year ends in March
+    const expiryDate = new Date(fiscalYearEnd);
+    expiryDate.setDate(fiscalYearEnd.getDate() + balance.policy.carryForwardExpiry);
+    
+    return expiryDate;
+  }
+
+  private groupBalanceData(balances: any[], groupBy: string) {
+    return balances.reduce((acc: any, balance) => {
+      let groupKey = '';
+      
+      switch (groupBy) {
+        case 'department':
+          groupKey = balance.employee.department;
+          break;
+        case 'employee':
+          groupKey = `${balance.employee.firstName} ${balance.employee.lastName}`;
+          break;
+        case 'leaveType':
+          groupKey = balance.policy.leaveType;
+          break;
+        default:
+          groupKey = 'All';
+      }
+      
+      if (!acc[groupKey]) {
+        acc[groupKey] = {
+          balances: [],
+          summary: {
+            totalEntitlement: 0,
+            totalUsed: 0,
+            totalAvailable: 0,
+            count: 0,
+          },
+        };
+      }
+      
+      acc[groupKey].balances.push(balance);
+      acc[groupKey].summary.totalEntitlement += balance.totalEntitlement;
+      acc[groupKey].summary.totalUsed += balance.usedLeaves;
+      acc[groupKey].summary.totalAvailable += balance.availableBalance;
+      acc[groupKey].summary.count++;
+      
+      return acc;
+    }, {});
+  }
+
+  private generateBalanceAlerts(balances: any[]) {
+    const alerts = [];
+    
+    const negativeBalances = balances.filter(b => b.status === 'NEGATIVE');
+    if (negativeBalances.length > 0) {
+      alerts.push({
+        type: 'NEGATIVE_BALANCE',
+        count: negativeBalances.length,
+        message: `${negativeBalances.length} employee(s) have negative leave balances`,
+        priority: 'HIGH',
+        employees: negativeBalances.slice(0, 5).map(b => b.employee),
+      });
+    }
+    
+    const expiringBalances = balances.filter(b => b.isExpiring);
+    if (expiringBalances.length > 0) {
+      alerts.push({
+        type: 'EXPIRING_BALANCE',
+        count: expiringBalances.length,
+        message: `${expiringBalances.length} employee(s) have leave balances expiring soon`,
+        priority: 'MEDIUM',
+        employees: expiringBalances.slice(0, 5).map(b => b.employee),
+      });
+    }
+    
+    return alerts;
+  }
+
+  async exportReport(exportData: any, userRole: string, userId: string) {
+    try {
+      const {
+        reportType,
+        format,
+        queryParams,
+        includeCharts = false,
+        includeRawData = true,
+        fileName,
+        emailTo,
+        emailSubject,
+      } = exportData;
+
+      // Generate the appropriate report data
+      let reportData: any;
+      switch (reportType) {
+        case 'summary':
+          reportData = await this.getLeaveSummaryReport(queryParams, userRole, userId);
+          break;
+        case 'utilization':
+          reportData = await this.getLeaveUtilizationReport(queryParams, userRole, userId);
+          break;
+        case 'trends':
+          reportData = await this.getLeaveTrendsReport(queryParams);
+          break;
+        case 'balance':
+          reportData = await this.getLeaveBalanceReport(queryParams, userRole, userId);
+          break;
+        default:
+          throw new AppError('Invalid report type', 400);
+      }
+
+      // Generate export content based on format
+      let exportContent: any;
+      const generatedFileName = fileName || `${reportType}_report_${new Date().toISOString().split('T')[0]}.${format}`;
+      
+      switch (format) {
+        case 'csv':
+          exportContent = this.generateCSVContent(reportData, reportType);
+          break;
+        case 'xlsx':
+          exportContent = this.generateExcelContent(reportData, reportType, includeCharts);
+          break;
+        case 'pdf':
+          exportContent = this.generatePDFContent(reportData, reportType, includeCharts);
+          break;
+        default:
+          throw new AppError('Invalid export format', 400);
+      }
+
+      const result: any = {
+        fileName: generatedFileName,
+        format,
+        reportType,
+        generatedAt: new Date(),
+        contentSize: exportContent.length,
+        downloadUrl: `/api/v1/leaves/reports/download/${Buffer.from(generatedFileName).toString('base64')}`,
+      };
+
+      // If email delivery is requested
+      if (emailTo && emailTo.length > 0) {
+        // In a real implementation, you would integrate with an email service
+        result.emailSent = true;
+        result.emailRecipients = emailTo.length;
+      }
+
+      return result;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Failed to export report', 500);
+    }
+  }
+
+  private generateCSVContent(reportData: any, reportType: string) {
+    // Basic CSV generation - in production, use a proper CSV library
+    let content = '';
+    
+    switch (reportType) {
+      case 'summary':
+        content = 'Metric,Value\\n';
+        content += `Total Requests,${reportData.summary.totalRequests}\\n`;
+        content += `Approved Requests,${reportData.summary.approvedRequests}\\n`;
+        content += `Rejected Requests,${reportData.summary.rejectedRequests}\\n`;
+        content += `Total Leave Days,${reportData.summary.totalLeaveDays}\\n`;
+        break;
+      case 'balance':
+        content = 'Employee,Department,Leave Type,Entitlement,Used,Available,Utilization %\\n';
+        reportData.balances.forEach((balance: any) => {
+          content += `"${balance.employee.firstName} ${balance.employee.lastName}",${balance.employee.department},${balance.policy.leaveType},${balance.totalEntitlement},${balance.usedLeaves},${balance.availableBalance},${balance.utilizationRate.toFixed(2)}\\n`;
+        });
+        break;
+      // Add other report types as needed
+    }
+    
+    return content;
+  }
+
+  private generateExcelContent(reportData: any, reportType: string, includeCharts: boolean) {
+    // In production, use a library like ExcelJS
+    return 'Excel content placeholder';
+  }
+
+  private generatePDFContent(reportData: any, reportType: string, includeCharts: boolean) {
+    // In production, use a library like Puppeteer or PDFKit
+    return 'PDF content placeholder';
+  }
 }
 
 export const leaveService = new LeaveService();

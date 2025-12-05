@@ -17,6 +17,15 @@ import {
   approveLeaveRequestBodySchema,
   updateLeaveBalanceBodySchema,
   getLeaveRequestsQuerySchema,
+  // Phase 5 and 6 schemas
+  getAuditLogsQuerySchema,
+  createAbsenteeAlertSchema,
+  getAbsenteesQuerySchema,
+  getLeaveSummaryReportQuerySchema,
+  getLeaveUtilizationReportQuerySchema,
+  getLeaveTrendsReportQuerySchema,
+  getLeaveBalanceReportQuerySchema,
+  exportReportSchema,
 } from './schema.js';
 
 const router = Router();
@@ -1567,5 +1576,512 @@ router.get('/team/requests', requireExactRole(['MANAGER']), leaveController.getL
  * @access  Manager only
  */
 router.get('/team/balances', requireExactRole(['MANAGER']), leaveController.getLeaveBalances);
+
+// ==================== PHASE 5: AUDIT TRAIL ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/leaves/audit:
+ *   get:
+ *     summary: Get audit logs
+ *     description: Get all audit logs with filtering (Admin sees all, Employees see own, Managers see team)
+ *     tags: [Leave Management - Audit Trail]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 20
+ *         description: Number of records per page
+ *       - in: query
+ *         name: leaveRequestId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by specific leave request ID
+ *       - in: query
+ *         name: performedBy
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by user who performed the action
+ *       - in: query
+ *         name: action
+ *         schema:
+ *           type: string
+ *         description: Filter by action type (CREATED, UPDATED, APPROVED, etc.)
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter from this date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter until this date
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [timestamp, action, performedBy]
+ *           default: timestamp
+ *         description: Sort field
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: Audit logs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         auditLogs:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                               action:
+ *                                 type: string
+ *                               performedBy:
+ *                                 type: string
+ *                               performedByEmail:
+ *                                 type: string
+ *                               timestamp:
+ *                                 type: string
+ *                                 format: date-time
+ *                         pagination:
+ *                           $ref: '#/components/schemas/PaginationMeta'
+ *       403:
+ *         description: Forbidden - Access denied
+ */
+router.get('/audit', leaveController.getAuditLogs);
+
+/**
+ * @swagger
+ * /api/v1/leaves/audit/{requestId}:
+ *   get:
+ *     summary: Get audit logs for specific request
+ *     description: Get audit trail for a specific leave request (Admin sees all, Employees see own, Managers see team)
+ *     tags: [Leave Management - Audit Trail]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Leave request ID
+ *     responses:
+ *       200:
+ *         description: Request audit logs retrieved successfully
+ *       403:
+ *         description: Forbidden - Access denied
+ *       404:
+ *         description: Leave request not found
+ */
+router.get('/audit/:requestId', leaveController.getAuditLogsForRequest);
+
+// ==================== PHASE 5: ABSENTEE TRACKING ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/leaves/absentees:
+ *   get:
+ *     summary: Get list of absentees
+ *     description: Get current and upcoming absentees (Manager sees team, Admin sees all)
+ *     tags: [Leave Management - Absentee Tracking]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter from this date
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter until this date
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filter by department
+ *       - in: query
+ *         name: team
+ *         schema:
+ *           type: string
+ *         description: Filter by team/work location
+ *       - in: query
+ *         name: leaveType
+ *         schema:
+ *           type: string
+ *           enum: [CASUAL, SICK, ANNUAL, MATERNITY, PATERNITY, PERSONAL, EMERGENCY, STUDY, BEREAVEMENT, COMPENSATORY]
+ *         description: Filter by leave type
+ *       - in: query
+ *         name: includeUpcoming
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Include upcoming leave
+ *       - in: query
+ *         name: includeCurrent
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *         description: Include current leave
+ *     responses:
+ *       200:
+ *         description: Absentees retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       type: object
+ *                       properties:
+ *                         absentees:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                         summary:
+ *                           type: object
+ *                           properties:
+ *                             total:
+ *                               type: integer
+ *                             current:
+ *                               type: integer
+ *                             upcoming:
+ *                               type: integer
+ */
+router.get('/absentees', leaveController.getAbsentees);
+
+/**
+ * @swagger
+ * /api/v1/leaves/absentees/alert:
+ *   post:
+ *     summary: Send absentee alert
+ *     description: Send alerts for unplanned absences or coverage gaps (Admin only)
+ *     tags: [Leave Management - Absentee Tracking]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [employeeIds, alertType, message, recipients]
+ *             properties:
+ *               employeeIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of employee IDs affected
+ *               alertType:
+ *                 type: string
+ *                 enum: [UNPLANNED_ABSENCE, COVERAGE_GAP, EXTENDED_ABSENCE, FREQUENT_ABSENCE]
+ *                 description: Type of alert
+ *               message:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Alert message
+ *               recipients:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: email
+ *                 description: Email addresses to receive the alert
+ *               severity:
+ *                 type: string
+ *                 enum: [LOW, MEDIUM, HIGH, CRITICAL]
+ *                 default: MEDIUM
+ *               autoEscalate:
+ *                 type: boolean
+ *                 default: false
+ *               escalationDelay:
+ *                 type: number
+ *                 maximum: 72
+ *                 description: Hours before escalation
+ *     responses:
+ *       201:
+ *         description: Alert sent successfully
+ *       403:
+ *         description: Forbidden - Admin access required
+ */
+router.post('/absentees/alert', requireExactRole(['ADMIN']), leaveController.createAbsenteeAlert);
+
+// ==================== PHASE 6: ADVANCED REPORTS ROUTES ====================
+
+/**
+ * @swagger
+ * /api/v1/leaves/reports/summary:
+ *   get:
+ *     summary: Generate leave summary report
+ *     description: Get comprehensive leave summary with analytics (Manager sees team, Admin sees all)
+ *     tags: [Leave Management - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Report start date
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Report end date
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filter by department
+ *       - in: query
+ *         name: employeeId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by specific employee
+ *       - in: query
+ *         name: leaveType
+ *         schema:
+ *           type: string
+ *           enum: [CASUAL, SICK, ANNUAL, MATERNITY, PATERNITY, PERSONAL, EMERGENCY]
+ *         description: Filter by leave type
+ *       - in: query
+ *         name: groupBy
+ *         schema:
+ *           type: string
+ *           enum: [department, employee, leaveType, month, quarter]
+ *         description: Group results by field
+ *       - in: query
+ *         name: includeAnalytics
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Include detailed analytics
+ *     responses:
+ *       200:
+ *         description: Summary report generated successfully
+ */
+router.get('/reports/summary', leaveController.getLeaveSummaryReport);
+
+/**
+ * @swagger
+ * /api/v1/leaves/reports/utilization:
+ *   get:
+ *     summary: Generate leave utilization report
+ *     description: Analyze leave utilization patterns and efficiency
+ *     tags: [Leave Management - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: utilizationThreshold
+ *         schema:
+ *           type: number
+ *           minimum: 0
+ *           maximum: 100
+ *           default: 80
+ *         description: Utilization threshold percentage
+ *       - in: query
+ *         name: showUnderutilized
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *       - in: query
+ *         name: showOverutilized
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *     responses:
+ *       200:
+ *         description: Utilization report generated successfully
+ */
+router.get('/reports/utilization', leaveController.getLeaveUtilizationReport);
+
+/**
+ * @swagger
+ * /api/v1/leaves/reports/trends:
+ *   get:
+ *     summary: Generate leave trends analysis
+ *     description: Analyze leave trends and patterns over time (Admin only)
+ *     tags: [Leave Management - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: periodType
+ *         schema:
+ *           type: string
+ *           enum: [monthly, quarterly, yearly]
+ *           default: monthly
+ *       - in: query
+ *         name: includeForecasting
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *     responses:
+ *       200:
+ *         description: Trends report generated successfully
+ *       403:
+ *         description: Forbidden - Admin access required
+ */
+router.get('/reports/trends', requireExactRole(['ADMIN']), leaveController.getLeaveTrendsReport);
+
+/**
+ * @swagger
+ * /api/v1/leaves/reports/balance:
+ *   get:
+ *     summary: Generate leave balance report
+ *     description: Comprehensive leave balance analysis across organization
+ *     tags: [Leave Management - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: fiscalYear
+ *         schema:
+ *           type: integer
+ *           minimum: 2020
+ *           maximum: 2030
+ *         description: Fiscal year for balance report
+ *       - in: query
+ *         name: department
+ *         schema:
+ *           type: string
+ *         description: Filter by department
+ *       - in: query
+ *         name: showNegativeBalances
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *       - in: query
+ *         name: showExpiringBalances
+ *         schema:
+ *           type: boolean
+ *           default: true
+ *       - in: query
+ *         name: groupBy
+ *         schema:
+ *           type: string
+ *           enum: [department, employee, leaveType]
+ *     responses:
+ *       200:
+ *         description: Balance report generated successfully
+ */
+router.get('/reports/balance', leaveController.getLeaveBalanceReport);
+
+/**
+ * @swagger
+ * /api/v1/leaves/reports/export:
+ *   post:
+ *     summary: Export reports in various formats
+ *     description: Export leave reports in CSV, Excel, or PDF format
+ *     tags: [Leave Management - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [reportType, format, queryParams]
+ *             properties:
+ *               reportType:
+ *                 type: string
+ *                 enum: [summary, utilization, trends, balance]
+ *               format:
+ *                 type: string
+ *                 enum: [csv, xlsx, pdf]
+ *               queryParams:
+ *                 type: object
+ *                 description: Query parameters for the specific report type
+ *               includeCharts:
+ *                 type: boolean
+ *                 default: false
+ *               fileName:
+ *                 type: string
+ *                 maxLength: 100
+ *               emailTo:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: email
+ *               emailSubject:
+ *                 type: string
+ *                 maxLength: 200
+ *     responses:
+ *       200:
+ *         description: Export initiated successfully
+ */
+router.post('/reports/export', leaveController.exportReport);
 
 export { router as leaveRoutes };

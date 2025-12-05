@@ -19,6 +19,16 @@ import {
   getLeaveBalanceQuerySchema,
   getLeaveAnalyticsQuerySchema,
   GetLeaveRequestsQuery,
+  // Phase 5: Audit Trail and Absentee Tracking schemas
+  getAuditLogsQuerySchema,
+  createAbsenteeAlertSchema,
+  getAbsenteesQuerySchema,
+  // Phase 6: Advanced Reports schemas
+  getLeaveSummaryReportQuerySchema,
+  getLeaveUtilizationReportQuerySchema,
+  getLeaveTrendsReportQuerySchema,
+  getLeaveBalanceReportQuerySchema,
+  exportReportSchema,
 } from './schema.js';
 import { asyncHandler } from '../../utils/asyncHandler.js';
 import { successResponse, errorResponse } from '../../utils/response.js';
@@ -1423,6 +1433,125 @@ export class LeaveController {
     };
 
     return successResponse(res, result, 'Leave data export initiated');
+  });
+
+  // ==================== PHASE 5: AUDIT TRAIL ENDPOINTS ====================
+
+  getAuditLogs = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const query = req.query;
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    // Only Admin can see all audit logs, others see filtered based on their role
+    if (userRole !== 'ADMIN' && userRole !== 'MANAGER' && userRole !== 'EMPLOYEE') {
+      return errorResponse(res, 'Access denied - Insufficient permissions', 403);
+    }
+
+    const result = await leaveService.getAuditLogs(query, userRole, userId);
+
+    return successResponse(res, result, 'Audit logs retrieved successfully');
+  });
+
+  getAuditLogsForRequest = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const { requestId } = req.params;
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    if (!requestId) {
+      return errorResponse(res, 'Request ID is required', 400);
+    }
+
+    const result = await leaveService.getAuditLogsForRequest(requestId, userRole, userId);
+
+    return successResponse(res, result, 'Request audit logs retrieved successfully');
+  });
+
+  // ==================== PHASE 5: ABSENTEE TRACKING ENDPOINTS ====================
+
+  getAbsentees = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const query = req.query;
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    const result = await leaveService.getAbsentees(query, userRole, userId);
+
+    return successResponse(res, result, 'Absentees retrieved successfully');
+  });
+
+  createAbsenteeAlert = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    // Only Admin can create absentee alerts
+    if (userRole !== 'ADMIN') {
+      return errorResponse(res, 'Access denied - Admin access required', 403);
+    }
+
+    const validatedData = createAbsenteeAlertSchema.parse(req.body);
+    const result = await leaveService.createAbsenteeAlert(validatedData, userId);
+
+    return successResponse(res, result, 'Absentee alert sent successfully', 201);
+  });
+
+  // ==================== PHASE 6: ADVANCED REPORTS ENDPOINTS ====================
+
+  getLeaveSummaryReport = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const query = getLeaveSummaryReportQuerySchema.parse(req.query);
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    const result = await leaveService.getLeaveSummaryReport(query, userRole, userId);
+
+    return successResponse(res, result, 'Leave summary report generated successfully');
+  });
+
+  getLeaveUtilizationReport = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const query = getLeaveUtilizationReportQuerySchema.parse(req.query);
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    const result = await leaveService.getLeaveUtilizationReport(query, userRole, userId);
+
+    return successResponse(res, result, 'Leave utilization report generated successfully');
+  });
+
+  getLeaveTrendsReport = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userRole = req.user?.role || 'EMPLOYEE';
+
+    // Only Admin can access trends report
+    if (userRole !== 'ADMIN') {
+      return errorResponse(res, 'Access denied - Admin access required', 403);
+    }
+
+    const query = getLeaveTrendsReportQuerySchema.parse(req.query);
+    const result = await leaveService.getLeaveTrendsReport(query);
+
+    return successResponse(res, result, 'Leave trends report generated successfully');
+  });
+
+  getLeaveBalanceReport = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const query = getLeaveBalanceReportQuerySchema.parse(req.query);
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    const result = await leaveService.getLeaveBalanceReport(query, userRole, userId);
+
+    return successResponse(res, result, 'Leave balance report generated successfully');
+  });
+
+  exportReport = asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const validatedData = exportReportSchema.parse(req.body);
+    const userRole = req.user?.role || 'EMPLOYEE';
+    const userId = req.user?.id || '';
+
+    // Role-based access for different report types
+    if (validatedData.reportType === 'trends' && userRole !== 'ADMIN') {
+      return errorResponse(res, 'Access denied - Admin access required for trends report', 403);
+    }
+
+    const result = await leaveService.exportReport(validatedData, userRole, userId);
+
+    return successResponse(res, result, 'Report export initiated successfully');
   });
 }
 

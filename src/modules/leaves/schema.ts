@@ -961,3 +961,236 @@ export const updateLeaveBalanceBodySchema = z
       path: ['root'],
     }
   );
+
+// ==================== PHASE 5: AUDIT TRAIL SCHEMAS ====================
+
+// Audit Trail Query Schema
+export const getAuditLogsQuerySchema = z.object({
+  // Pagination
+  page: z.string().regex(/^\d+$/, 'Page must be a number').transform(Number).default('1'),
+  limit: z.string().regex(/^\d+$/, 'Limit must be a number').transform(Number).default('20'),
+  
+  // Filtering
+  leaveRequestId: z.string().uuid('Invalid leave request ID').optional(),
+  performedBy: z.string().uuid('Invalid user ID').optional(),
+  action: z.string().min(1, 'Action is required').optional(),
+  startDate: dateFormat.optional(),
+  endDate: dateFormat.optional(),
+  
+  // Sorting
+  sortBy: z.enum(['timestamp', 'action', 'performedBy']).default('timestamp'),
+  sortOrder: z.enum(['asc', 'desc']).default('desc'),
+}).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      const start = new Date(data.startDate);
+      const end = new Date(data.endDate);
+      return start <= end;
+    }
+    return true;
+  },
+  {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  }
+);
+
+export type GetAuditLogsQuery = z.infer<typeof getAuditLogsQuerySchema>;
+
+// ==================== PHASE 5: ABSENTEE TRACKING SCHEMAS ====================
+
+// Absentees Query Schema
+export const getAbsenteesQuerySchema = z.object({
+  // Date range
+  startDate: dateFormat.optional(),
+  endDate: dateFormat.optional(),
+  
+  // Filtering
+  department: z.string().min(1, 'Department is required').optional(),
+  team: z.string().min(1, 'Team is required').optional(),
+  leaveType: leaveTypeSchema.optional(),
+  employeeId: z.string().uuid('Invalid employee ID').optional(),
+  
+  // Options
+  includeUpcoming: z.boolean().default(true),
+  includeCurrent: z.boolean().default(true),
+  
+  // Pagination
+  page: z.string().regex(/^\d+$/, 'Page must be a number').transform(Number).default('1'),
+  limit: z.string().regex(/^\d+$/, 'Limit must be a number').transform(Number).default('50'),
+}).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      const start = new Date(data.startDate);
+      const end = new Date(data.endDate);
+      return start <= end;
+    }
+    return true;
+  },
+  {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  }
+);
+
+export type GetAbsenteesQuery = z.infer<typeof getAbsenteesQuerySchema>;
+
+// Absentee Alert Schema
+export const createAbsenteeAlertSchema = z.object({
+  employeeIds: z.array(z.string().uuid('Invalid employee ID')).min(1, 'At least one employee ID is required'),
+  alertType: z.enum(['UNPLANNED_ABSENCE', 'COVERAGE_GAP', 'EXTENDED_ABSENCE', 'FREQUENT_ABSENCE']),
+  message: z.string().min(1, 'Alert message is required').max(500, 'Message must not exceed 500 characters'),
+  recipients: z.array(z.string().email('Invalid email format')).min(1, 'At least one recipient is required'),
+  severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).default('MEDIUM'),
+  autoEscalate: z.boolean().default(false),
+  escalationDelay: positiveNumber.max(72, 'Escalation delay cannot exceed 72 hours').optional(),
+});
+
+export type CreateAbsenteeAlertInput = z.infer<typeof createAbsenteeAlertSchema>;
+
+// ==================== PHASE 6: ADVANCED REPORTS SCHEMAS ====================
+
+// Report Query Base Schema
+const baseReportQueryFields = {
+  // Date range
+  startDate: dateFormat,
+  endDate: dateFormat,
+  
+  // Filtering
+  department: z.string().min(1, 'Department is required').optional(),
+  employeeId: z.string().uuid('Invalid employee ID').optional(),
+  leaveType: leaveTypeSchema.optional(),
+  location: z.string().min(1, 'Location is required').optional(),
+  
+  // Grouping
+  groupBy: z.enum(['department', 'employee', 'leaveType', 'month', 'quarter']).optional(),
+  
+  // Options
+  includeSubordinates: z.boolean().default(true),
+  fiscalYear: z.number().int().min(2020).max(2030).optional(),
+};
+
+const baseReportQuerySchema = z.object(baseReportQueryFields).refine(
+  (data) => {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    return start <= end;
+  },
+  {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  }
+);
+
+// Leave Summary Report Schema
+export const getLeaveSummaryReportQuerySchema = z.object({
+  ...baseReportQueryFields,
+  includeAnalytics: z.boolean().default(false),
+  compareWithPrevious: z.boolean().default(false),
+}).refine(
+  (data) => {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    return start <= end;
+  },
+  {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  }
+);
+
+export type GetLeaveSummaryReportQuery = z.infer<typeof getLeaveSummaryReportQuerySchema>;
+
+// Leave Utilization Report Schema
+export const getLeaveUtilizationReportQuerySchema = z.object({
+  ...baseReportQueryFields,
+  utilizationThreshold: z.number().min(0).max(100).default(80),
+  showUnderutilized: z.boolean().default(false),
+  showOverutilized: z.boolean().default(true),
+}).refine(
+  (data) => {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    return start <= end;
+  },
+  {
+    message: 'Start date must be before end date',
+    path: ['endDate'],
+  }
+);
+
+export type GetLeaveUtilizationReportQuery = z.infer<typeof getLeaveUtilizationReportQuerySchema>;
+
+// Leave Trends Report Schema
+export const getLeaveTrendsReportQuerySchema = z.object({
+  // Extended date range for trend analysis
+  startDate: dateFormat,
+  endDate: dateFormat,
+  
+  // Trend analysis options
+  periodType: z.enum(['monthly', 'quarterly', 'yearly']).default('monthly'),
+  trendMetrics: z.array(z.enum(['volume', 'approval_rate', 'average_duration', 'seasonal_pattern'])).default(['volume']),
+  includeForecasting: z.boolean().default(false),
+  forecastPeriods: z.number().int().min(1).max(12).default(3),
+  
+  // Filtering
+  department: z.string().min(1, 'Department is required').optional(),
+  leaveType: leaveTypeSchema.optional(),
+}).refine(
+  (data) => {
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    const monthsDiff = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    return start <= end && monthsDiff >= 6; // Minimum 6 months for trends
+  },
+  {
+    message: 'Date range must be at least 6 months for trend analysis',
+    path: ['endDate'],
+  }
+);
+
+export type GetLeaveTrendsReportQuery = z.infer<typeof getLeaveTrendsReportQuerySchema>;
+
+// Leave Balance Report Schema
+export const getLeaveBalanceReportQuerySchema = z.object({
+  // Date context
+  asOfDate: dateFormat.optional(),
+  fiscalYear: z.number().int().min(2020).max(2030).optional(),
+  
+  // Filtering
+  department: z.string().min(1, 'Department is required').optional(),
+  employeeId: z.string().uuid('Invalid employee ID').optional(),
+  leaveType: leaveTypeSchema.optional(),
+  
+  // Balance filtering
+  showNegativeBalances: z.boolean().default(true),
+  showExpiringBalances: z.boolean().default(true),
+  expiryThresholdDays: z.number().int().min(0).max(365).default(30),
+  
+  // Grouping and sorting
+  groupBy: z.enum(['department', 'employee', 'leaveType']).optional(),
+  sortBy: z.enum(['employee', 'department', 'balance', 'utilization']).default('employee'),
+  sortOrder: z.enum(['asc', 'desc']).default('asc'),
+});
+
+export type GetLeaveBalanceReportQuery = z.infer<typeof getLeaveBalanceReportQuerySchema>;
+
+// Report Export Schema
+export const exportReportSchema = z.object({
+  reportType: z.enum(['summary', 'utilization', 'trends', 'balance']),
+  format: z.enum(['csv', 'xlsx', 'pdf']),
+  
+  // Report-specific query parameters
+  queryParams: z.record(z.any()), // Will be validated by specific report schemas
+  
+  // Export options
+  includeCharts: z.boolean().default(false),
+  includeRawData: z.boolean().default(true),
+  fileName: z.string().min(1, 'File name is required').max(100, 'File name must not exceed 100 characters').optional(),
+  
+  // Email delivery (optional)
+  emailTo: z.array(z.string().email('Invalid email format')).optional(),
+  emailSubject: z.string().max(200, 'Subject must not exceed 200 characters').optional(),
+});
+
+export type ExportReportInput = z.infer<typeof exportReportSchema>;
